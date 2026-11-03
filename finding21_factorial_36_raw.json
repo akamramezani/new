@@ -21,8 +21,8 @@
   "finding21_key": "scaly|21",
   "expected_assessments": 36,
   "completed_assessments": 36,
-  "successful_assessments": 35,
-  "failed_assessments": 1,
+  "successful_assessments": 36,
+  "failed_assessments": 0,
   "records": {
     "external_003_YY__finding21_unanswered": {
       "background": "external_003",
@@ -25457,8 +25457,708 @@
         "scaly|37": "y",
         "scaly|21": "y"
       },
-      "success": false,
-      "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.medconsults.ai/api/knowledge/derm/assess')"
+      "local_predictors": {
+        "ast": 0.02907524605717663,
+        "ldrug": 0.008894376996585412,
+        "lp": 0.027270627253729578,
+        "mf": 0.01236450240532492,
+        "num": 0.20056390682563693,
+        "pr": 0.13143278204515946,
+        "prp": 0.024619509448263882,
+        "pso": 0.05896825870979135,
+        "reac": 0.004447188498292706,
+        "scle": 0.006861106480500585,
+        "seb": 0.3339251748029229,
+        "syph": 0.006653827455125801,
+        "tin": 0.0160061426205273
+      },
+      "api_response": {
+        "rank": {
+          "rows": [
+            {
+              "id": "seb",
+              "p": 0.33392517480292283,
+              "lr": null,
+              "pre": 0.13846153846153847
+            },
+            {
+              "id": "num",
+              "p": 0.2005639068256369,
+              "lr": null,
+              "pre": 0.046153846153846156
+            },
+            {
+              "id": "pr",
+              "p": 0.13143278204515943,
+              "lr": null,
+              "pre": 0.08461538461538462
+            },
+            {
+              "id": "pso",
+              "p": 0.05896825870979134,
+              "lr": null,
+              "pre": 0.18461538461538463
+            },
+            {
+              "id": "ivul",
+              "p": 0.05178123748575228,
+              "lr": null,
+              "pre": 0.038461538461538464
+            },
+            {
+              "id": "ast",
+              "p": 0.029075246057176627,
+              "lr": null,
+              "pre": 0.046153846153846156
+            },
+            {
+              "id": "lp",
+              "p": 0.027270627253729574,
+              "lr": null,
+              "pre": 0.06153846153846154
+            },
+            {
+              "id": "prp",
+              "p": 0.02461950944826388,
+              "lr": null,
+              "pre": 0.015384615384615385
+            },
+            {
+              "id": "tin",
+              "p": 0.016006142620527297,
+              "lr": null,
+              "pre": 0.1076923076923077
+            },
+            {
+              "id": "bowen",
+              "p": 0.012364502405324919,
+              "lr": null,
+              "pre": 0.03076923076923077
+            },
+            {
+              "id": "mf",
+              "p": 0.012364502405324919,
+              "lr": null,
+              "pre": 0.03076923076923077
+            },
+            {
+              "id": "plc",
+              "p": 0.012364502405324919,
+              "lr": null,
+              "pre": 0.03076923076923077
+            },
+            {
+              "id": "ldrug",
+              "p": 0.008894376996585409,
+              "lr": null,
+              "pre": 0.046153846153846156
+            },
+            {
+              "id": "scle",
+              "p": 0.006861106480500583,
+              "lr": null,
+              "pre": 0.023076923076923078
+            },
+            {
+              "id": "eryth",
+              "p": 0.006736761100798608,
+              "lr": null,
+              "pre": 0.03076923076923077
+            },
+            {
+              "id": "syph",
+              "p": 0.0066538274551258,
+              "lr": null,
+              "pre": 0.038461538461538464
+            },
+            {
+              "id": "dles",
+              "p": 0.004882923279545279,
+              "lr": null,
+              "pre": 0.023076923076923078
+            },
+            {
+              "id": "reac",
+              "p": 0.004447188498292704,
+              "lr": null,
+              "pre": 0.023076923076923078
+            }
+          ],
+          "dropped": [
+            {
+              "f": {
+                "l": "Islands of normal skin within confluent erythema",
+                "g": "prp-morph",
+                "f": {
+                  "prp": [
+                    20,
+                    0.6
+                  ],
+                  "pso": [
+                    0.5,
+                    1.05
+                  ]
+                },
+                "c": "B",
+                "s": "Sharply demarcated islands of sparing are near-specific for PRP, Fitzpatrick 8e §3"
+              },
+              "i": 17,
+              "v": "n"
+            }
+          ],
+          "answered": 14,
+          "residual": 0.05078742372421646
+        },
+        "flags": [],
+        "ctxRowKeys": [
+          "Age under 16",
+          "Age over 55",
+          "Family history of psoriasis",
+          "Recent streptococcal pharyngitis",
+          "New drug in the last 8 weeks",
+          "Sexual risk exposure in the last 6 months",
+          "Known HIV or immunosuppression",
+          "Treated with a topical steroid and got worse",
+          "Present for more than 2 years, never fully clears",
+          "Dry heated indoor climate, or daily hot soapy bathing",
+          "Enteric or genitourinary infection in the last 6 weeks"
+        ],
+        "ctxOnKeys": [],
+        "dxIds": [
+          "bowen",
+          "dles",
+          "pso",
+          "seb",
+          "tin",
+          "pr",
+          "lp",
+          "num",
+          "syph",
+          "mf",
+          "scle",
+          "prp",
+          "ldrug",
+          "plc",
+          "reac",
+          "ivul",
+          "eryth",
+          "ast"
+        ],
+        "answered": [
+          {
+            "f": {
+              "l": "Auspitz sign — punctate bleeding after scale removal",
+              "g": "pso-morph",
+              "f": {
+                "pso": [
+                  3.5,
+                  0.8
+                ]
+              },
+              "c": "C",
+              "s": "Suggestive of psoriasis but not specific, Fitzpatrick 8e Introduction"
+            },
+            "i": 1,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Greasy yellow scale in nasolabial folds and eyebrows",
+              "g": "seb-morph",
+              "f": {
+                "seb": [
+                  7,
+                  0.3
+                ],
+                "pso": [
+                  0.6,
+                  1.2
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §2"
+            },
+            "i": 3,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Central clearing with a raised, scaly, advancing edge",
+              "g": "ann",
+              "f": {
+                "tin": [
+                  7,
+                  0.3
+                ],
+                "scle": [
+                  2,
+                  0.9
+                ],
+                "pso": [
+                  0.4,
+                  1.1
+                ],
+                "seb": [
+                  0.5,
+                  1.05
+                ],
+                "eryth": [
+                  0.3,
+                  1.2
+                ],
+                "ast": [
+                  0.4,
+                  1.1
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §26"
+            },
+            "i": 4,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Collarette of scale trailing the inner edge of lesions",
+              "g": "pr-morph",
+              "f": {
+                "pr": [
+                  6,
+                  0.4
+                ],
+                "pso": [
+                  0.5,
+                  1.1
+                ]
+              },
+              "c": "B",
+              "s": "Marginal collarette distinguishes pityriasis rosea from guttate psoriasis, Fitzpatrick 8e §3"
+            },
+            "i": 8,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Palms and soles involved",
+              "g": "palm",
+              "f": {
+                "syph": [
+                  8,
+                  0.3
+                ],
+                "prp": [
+                  3.5,
+                  0.8
+                ],
+                "pso": [
+                  1.5,
+                  0.9
+                ],
+                "pr": [
+                  0.2,
+                  1.15
+                ],
+                "seb": [
+                  0.3,
+                  1.1
+                ],
+                "reac": [
+                  6,
+                  0.35
+                ]
+              },
+              "c": "B",
+              "s": "Palmoplantar involvement is the classic discriminator for secondary syphilis, Fitzpatrick 8e §30"
+            },
+            "i": 13,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Islands of normal skin within confluent erythema",
+              "g": "prp-morph",
+              "f": {
+                "prp": [
+                  20,
+                  0.6
+                ],
+                "pso": [
+                  0.5,
+                  1.05
+                ]
+              },
+              "c": "B",
+              "s": "Sharply demarcated islands of sparing are near-specific for PRP, Fitzpatrick 8e §3"
+            },
+            "i": 17,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Follicular hyperkeratotic papules, nutmeg-grater feel",
+              "g": "prp-morph",
+              "f": {
+                "prp": [
+                  9,
+                  0.4
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §3"
+            },
+            "i": 18,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Coin-shaped weeping or crusted plaques with xerosis",
+              "g": "num-morph",
+              "f": {
+                "num": [
+                  10,
+                  0.35
+                ],
+                "pso": [
+                  0.6,
+                  1.1
+                ],
+                "ast": [
+                  0.4,
+                  1.15
+                ]
+              },
+              "c": "C",
+              "s": "Fitzpatrick 8e §2"
+            },
+            "i": 21,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Follicular plugging with scarring, atrophy and dyspigmentation",
+              "g": "dle-scar",
+              "f": {
+                "dles": [
+                  8,
+                  0.4
+                ],
+                "scle": [
+                  2,
+                  0.85
+                ]
+              },
+              "c": "B",
+              "s": "Andrews' Diseases of the Skin"
+            },
+            "i": 24,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Widespread scaly violaceous eruption in a photoexposed distribution",
+              "g": "photo",
+              "f": {
+                "ldrug": [
+                  8,
+                  0.35
+                ],
+                "lp": [
+                  0.7,
+                  1.15
+                ],
+                "scle": [
+                  3.5,
+                  0.85
+                ]
+              },
+              "c": "C",
+              "s": "Fitzpatrick 8e §23 Table 23-4 - lichenoid drug eruptions are more extensive and more scaly than lichen planus"
+            },
+            "i": 25,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Bound-down fish-scale scaling on the shins with spared antecubital and popliteal fossae",
+              "g": "ivul-morph",
+              "f": {
+                "ivul": [
+                  12,
+                  0.25
+                ],
+                "ast": [
+                  1.5,
+                  0.9
+                ],
+                "pso": [
+                  0.5,
+                  1.1
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §4"
+            },
+            "i": 32,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Hyperlinear palms with keratosis pilaris of the outer arms",
+              "g": "ivul-atopy",
+              "f": {
+                "ivul": [
+                  9,
+                  0.4
+                ],
+                "num": [
+                  1.5,
+                  0.95
+                ],
+                "ast": [
+                  1.2,
+                  1
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §4"
+            },
+            "i": 33,
+            "v": "y"
+          },
+          {
+            "f": {
+              "l": "Sharply marginated tan-brown patch with fine wrinkled scale and no advancing edge",
+              "g": "eryth-morph",
+              "f": {
+                "eryth": [
+                  7,
+                  0.35
+                ],
+                "tin": [
+                  0.5,
+                  1.15
+                ],
+                "pso": [
+                  0.7,
+                  1.05
+                ]
+              },
+              "c": "B",
+              "s": "Fitzpatrick 8e §25"
+            },
+            "i": 35,
+            "v": "n"
+          },
+          {
+            "f": {
+              "l": "Flares every winter and clears in summer",
+              "g": "seasonal",
+              "f": {
+                "ast": [
+                  4,
+                  0.4
+                ],
+                "ivul": [
+                  2.5,
+                  0.8
+                ],
+                "num": [
+                  2,
+                  0.85
+                ],
+                "seb": [
+                  1.6,
+                  0.9
+                ],
+                "tin": [
+                  0.7,
+                  1.05
+                ]
+              },
+              "c": "C",
+              "s": "Fitzpatrick 8e §2,§4 - xerotic dermatoses worsen with low winter humidity"
+            },
+            "i": 37,
+            "v": "y"
+          }
+        ],
+        "next": {
+          "i": 15,
+          "yA": 1,
+          "yB": 0.2,
+          "nA": 1,
+          "nB": 1.5,
+          "aId": "seb",
+          "bId": "num"
+        },
+        "zones": {
+          "scalp": 0.8792258561592938,
+          "face": 0.8015248619638887,
+          "ear": 0.5213262077963194,
+          "neck": 0.09098545565746748,
+          "chest": 0.854475468552793,
+          "back": 1,
+          "abdo": 0.3081964332390756,
+          "axilla": 0.07079035610162913,
+          "groin": 0.09419692275955233,
+          "buttock": 0.13471745911639063,
+          "shoulder": 0.3268774110661849,
+          "elbow": 0.20816286284983557,
+          "antecub": 0.05689532061506726,
+          "forearm": 0.42680716957412745,
+          "wrist": 0.11314287456001182,
+          "hand": 0.5274937032756805,
+          "palm": 0.23737375561753393,
+          "thigh": 0.301644648695752,
+          "knee": 0.19883320679275998,
+          "poplit": 0.05689532061506726,
+          "shin": 0.7310189492533117,
+          "calf": 0.42847597829075657,
+          "ankle": 0.09345623067928122,
+          "foot": 0.07565884507716057,
+          "sole": 0.19999292192416412,
+          "conj": 0.003669053485769688,
+          "oral": 0.042050501707858415,
+          "nail": 0.08435497588486353,
+          "web": 0.009031773066265219,
+          "umbil": 0,
+          "genital": 0.021652859948474823,
+          "perianal": 0.010201056390454622
+        },
+        "tests": [
+          {
+            "id": "bowen",
+            "post": {
+              "pos": 0.192158540458518,
+              "neg": 0.0006584765065051857,
+              "LRp": 18.999999999999982,
+              "LRn": 0.052631578947368474
+            }
+          },
+          {
+            "id": "tin",
+            "post": {
+              "pos": 0.20651552720216743,
+              "neg": 0.0034128403485531394,
+              "LRp": 15.999999999999988,
+              "LRn": 0.21052631578947364
+            }
+          },
+          {
+            "id": "tin",
+            "post": {
+              "pos": 0.5941534720167277,
+              "neg": 0.0016403861912078098,
+              "LRp": 89.99999999999993,
+              "LRn": 0.101010101010101
+            }
+          },
+          {
+            "id": "pso",
+            "post": {
+              "pos": 0.23856924233914273,
+              "neg": 0.01809688193766138,
+              "LRp": 4.999999999999999,
+              "LRn": 0.29411764705882354
+            }
+          },
+          {
+            "id": "mf",
+            "post": {
+              "pos": 0.06986762249969072,
+              "neg": 0.005533343871034909,
+              "LRp": 6.000000000000001,
+              "LRn": 0.4444444444444445
+            }
+          },
+          {
+            "id": "syph",
+            "post": {
+              "pos": 0.24711351284025015,
+              "neg": 0.00013668330360815632,
+              "LRp": 48.99999999999996,
+              "LRn": 0.02040816326530614
+            }
+          },
+          {
+            "id": "scle",
+            "post": {
+              "pos": 0.046652311503107946,
+              "neg": 0.0011762012531414863,
+              "LRp": 7.083333333333333,
+              "LRn": 0.17045454545454547
+            }
+          },
+          {
+            "id": "seb",
+            "post": {
+              "pos": 0.9802496249224352,
+              "neg": 0.005038453378444445,
+              "LRp": 98.99999999999991,
+              "LRn": 0.01010101010101011
+            }
+          },
+          {
+            "id": "eryth",
+            "post": {
+              "pos": 0.10880124401194588,
+              "neg": 0.0007134330567737085,
+              "LRp": 17.999999999999986,
+              "LRn": 0.10526315789473682
+            }
+          },
+          {
+            "id": "plc",
+            "post": {
+              "pos": 0.06259044730465489,
+              "neg": 0.002937065245595207,
+              "LRp": 5.333333333333333,
+              "LRn": 0.23529411764705876
+            }
+          },
+          {
+            "id": "ldrug",
+            "post": {
+              "pos": 0.03673909530206534,
+              "neg": 0.0016798353213802,
+              "LRp": 4.250000000000001,
+              "LRn": 0.18750000000000003
+            }
+          },
+          {
+            "id": "reac",
+            "post": {
+              "pos": 0.016475465738818994,
+              "neg": 0.0013940085060001241,
+              "LRp": 3.750000000000001,
+              "LRn": 0.3125
+            }
+          },
+          {
+            "id": "ivul",
+            "post": {
+              "pos": 0.22555529361609625,
+              "neg": 0.012686159741019044,
+              "LRp": 5.333333333333333,
+              "LRn": 0.23529411764705876
+            }
+          },
+          {
+            "id": "ast",
+            "post": {
+              "pos": 0.07821086363692277,
+              "neg": 0.00637607014743495,
+              "LRp": 2.833333333333333,
+              "LRn": 0.21428571428571433
+            }
+          }
+        ],
+        "staleness": {
+          "months": 3,
+          "over": false
+        }
+      },
+      "success": true
     }
   }
 }
