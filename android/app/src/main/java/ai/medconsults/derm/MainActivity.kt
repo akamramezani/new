@@ -340,7 +340,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                 label = { Text("Search diagnoses") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = topFiveOnly, onClick = { topFiveOnly = !topFiveOnly }, label = { Text("Top five only") })
-                Text("\${visibleRanked.size} of \${result.ranked.size} diagnoses shown",
+                Text("${visibleRanked.size} of ${result.ranked.size} diagnoses shown",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
