@@ -87,10 +87,15 @@ internal object ScalyCorrelationGuard {
     }
 }
 
-class OfflineScalyEngine(assets: AssetManager) {
-    private val presentation: JSONObject =
+class OfflineScalyEngine private constructor(private val presentation: JSONObject) {
+    constructor(assets: AssetManager) : this(
         assets.open("knowledge/presentation_scaly.json")
             .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+    )
+
+    internal constructor(presentation: JSONObject, testFixture: Boolean) : this(presentation) {
+        require(testFixture) { "The JSON constructor is reserved for deterministic scorer tests." }
+    }
 
     val presentationLabel: String = presentation.optString("label", "Scaly plaques and patches")
     val lead: String = presentation.optString("lead", "")
