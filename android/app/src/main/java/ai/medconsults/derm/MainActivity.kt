@@ -219,6 +219,7 @@ private fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean>, search: String,
                            onSearch: (String) -> Unit, onChange: () -> Unit) {
