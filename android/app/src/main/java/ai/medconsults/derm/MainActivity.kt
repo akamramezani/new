@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -92,20 +93,45 @@ private enum class Screen(val title: String, val glyph: String) {
 private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEngine) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val ids = remember { catalog.presentationIds }
-    var selectedId by remember { mutableStateOf("scaly") }
+    var selectedId by rememberSaveable { mutableStateOf("scaly") }
     var menu by remember { mutableStateOf(false) }
     var screen by remember { mutableStateOf(Screen.HOME) }
     var data by remember { mutableStateOf<PresentationData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    val answers = remember(selectedId) { mutableStateMapOf<Int, Boolean>() }
+
+    // Persist the in-progress assessment in Android's saved-instance state. The
+    // compact strings contain only finding answers and selected item indices.
+    var savedAnswers by rememberSaveable(selectedId) { mutableStateOf("") }
+    var savedTests by rememberSaveable(selectedId) { mutableStateOf("") }
+    var savedContexts by rememberSaveable(selectedId) { mutableStateOf("") }
+    val answers = remember(selectedId) {
+        mutableStateMapOf<Int, Boolean>().apply {
+            savedAnswers.split(",").filter { it.isNotBlank() }.forEach { entry ->
+                val parts = entry.split(":")
+                val index = parts.getOrNull(0)?.toIntOrNull()
+                val value = parts.getOrNull(1)?.toBooleanStrictOrNull()
+                if (index != null && value != null) this[index] = value
+            }
+        }
+    }
     var result by remember(selectedId) { mutableStateOf<ScalyResult?>(null) }
     var scoreError by remember(selectedId) { mutableStateOf<String?>(null) }
-    var selectedDx by remember(selectedId) { mutableStateOf<String?>(null) }
-    var selectedTests by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
-    var selectedContexts by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
-    var patientAge by remember(selectedId) { mutableStateOf("") }
-    var patientSex by remember(selectedId) { mutableStateOf("Not specified") }
-    var search by remember(selectedId) { mutableStateOf("") }
+    var selectedDx by rememberSaveable(selectedId) { mutableStateOf<String?>(null) }
+    var selectedTests by rememberSaveable(selectedId) {
+        mutableStateOf(savedTests.split(",").mapNotNull { it.toIntOrNull() }.toSet())
+    }
+    var selectedContexts by rememberSaveable(selectedId) {
+        mutableStateOf(savedContexts.split(",").mapNotNull { it.toIntOrNull() }.toSet())
+    }
+    var patientAge by rememberSaveable(selectedId) { mutableStateOf("") }
+    var patientSex by rememberSaveable(selectedId) { mutableStateOf("Not specified") }
+    var search by rememberSaveable(selectedId) { mutableStateOf("") }
+
+    SideEffect {
+        savedAnswers = answers.toSortedMap().entries.joinToString(",") { "${it.key}:${it.value}" }
+        savedTests = selectedTests.sorted().joinToString(",")
+        savedContexts = selectedContexts.sorted().joinToString(",")
+    }
     LaunchedEffect(selectedId) {
         try { data = catalog.load(selectedId); error = null }
         catch (e: Exception) { data = null; error = e.message ?: "Unable to load presentation" }
