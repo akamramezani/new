@@ -138,7 +138,10 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                     Screen.REFERENCE -> ReferenceScreen(
                         p, selectedDx, selectedContexts, patientAge, patientSex,
                         onDiagnosisSelect = { selectedDx = it },
-                        onPatientAgeChange = { patientAge = it.filter(Char::isDigit).take(3) },
+                        onPatientAgeChange = { value ->
+                            val digits = value.filter(Char::isDigit).take(3)
+                            if (digits.isBlank() || digits.toIntOrNull()?.let { it <= 120 } == true) patientAge = digits
+                        },
                         onPatientSexChange = { patientSex = it },
                         onContextToggle = { index ->
                             selectedContexts = if (index in selectedContexts) selectedContexts - index
@@ -299,6 +302,14 @@ private fun HomeScreen(
                     " · Sex: $patientSex", style = MaterialTheme.typography.bodySmall)
                 Text("Context items selected for review: " + selectedContexts.size,
                     style = MaterialTheme.typography.bodySmall)
+                val selectedContextNames = p.contexts.filter { it.index in selectedContexts }.map { it.label }
+                if (selectedContextNames.isEmpty()) {
+                    Text("No patient context modifiers selected.", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    selectedContextNames.forEach { label ->
+                        Text("Context · $label", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 Text("Investigations selected for review: " +
                     (if (selectedTestNames.isEmpty()) "none" else selectedTestNames.joinToString("; ")),
                     style = MaterialTheme.typography.bodySmall)
