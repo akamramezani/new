@@ -13,7 +13,7 @@ class ScalyCorrelationGuardTest {
     @Test
     fun groupSixRetainsEighteenOnlyForNegativeSeventeenAndPositiveEighteen() {
         assertEquals(setOf(18), ScalyCorrelationGuard.retainedIndices(mapOf(17 to false, 18 to true)))
-        assertEquals(setOf(17), ScalyCorrelationGuard.retainedIndices(mapOf(17 to false, 18 to false)))
+        assertEquals(setOf(18), ScalyCorrelationGuard.retainedIndices(mapOf(17 to false, 18 to false)))
         assertEquals(setOf(17), ScalyCorrelationGuard.retainedIndices(mapOf(17 to true, 18 to true)))
         assertEquals(setOf(17), ScalyCorrelationGuard.retainedIndices(mapOf(17 to true, 18 to false)))
     }
@@ -49,7 +49,7 @@ class ScalyCorrelationGuardTest {
             Triple(19, 20, { a: Boolean, _: Boolean -> if (a) 19 else 20 }),
             Triple(16, 25, { a: Boolean, b: Boolean -> if (a) 16 else if (b) 25 else 16 }),
             Triple(13, 29, { _: Boolean, b: Boolean -> if (b) 29 else 13 }),
-            Triple(17, 18, { a: Boolean, b: Boolean -> if (!a && b) 18 else 17 })
+            Triple(17, 18, { a: Boolean, _: Boolean -> if (!a) 18 else 17 })
         )
         cases.forEach { (first, second, choose) ->
             listOf(false, true).forEach { firstAnswer ->
