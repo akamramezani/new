@@ -17,7 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.medconsults.derm.engine.*
@@ -161,7 +160,8 @@ private fun buildAssessmentSummary(
     selectedTest: Int?
 ): String {
     val findingsByIndex = p.findings.associateBy { it.index }
-    val selectedTestName = p.tests.firstOrNull { it.index == selectedTest }?.label
+    val selectedTestInfo = p.tests.firstOrNull { it.index == selectedTest }
+    val selectedContextLabels = p.contexts.filter { it.index in selectedContexts }.map { it.label }
     return buildString {
         appendLine("MedConsults — Dermatology assessment summary")
         appendLine("Presentation: ${p.label}")
@@ -178,8 +178,14 @@ private fun buildAssessmentSummary(
         }
         if (answers.isEmpty()) appendLine("No findings recorded.")
         appendLine()
-        appendLine("Investigation selected: ${selectedTestName ?: "None"}")
-        appendLine("Context items selected for review: ${selectedContexts.size}")
+        appendLine("Investigation selected: ${selectedTestInfo?.label ?: "None"}")
+        selectedTestInfo?.let {
+            appendLine("Investigation target: ${it.target}")
+            appendLine("Investigation source: ${it.source}")
+        }
+        appendLine("Context items selected for review (${selectedContextLabels.size})")
+        if (selectedContextLabels.isEmpty()) appendLine("None")
+        else selectedContextLabels.forEach { appendLine("• $it") }
         if (result != null) {
             appendLine()
             appendLine("Provisional model ranking (not validated clinical probabilities)")
@@ -194,6 +200,11 @@ private fun buildAssessmentSummary(
         }
         appendLine()
         appendLine("Safety flag: ${p.safetyFlag}")
+        if (p.stopRules.isNotEmpty()) {
+            appendLine("Escalation and stop rules")
+            p.stopRules.forEach { appendLine("• ${it.label}: ${it.action}") }
+        }
+        appendLine()
         appendLine("Clinical safety: This prototype is not validated for clinical decisions. Verify findings, source applicability, investigations, and escalation needs independently. The displayed model shares are not validated clinical probabilities.")
     }
 }
