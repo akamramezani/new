@@ -289,6 +289,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TestsScreen(p: PresentationData, selected: Int?, onSelect: (Int?) -> Unit) {
     var targetMenu by remember(p.id) { mutableStateOf(false) }
