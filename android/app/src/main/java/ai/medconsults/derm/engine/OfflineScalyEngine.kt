@@ -66,9 +66,10 @@ internal object ScalyCorrelationGuard {
         resolve(listOf(13, 29)) {
             if (answers[29] == true) 29 else 13
         }
-        // Python reference: retain 18 only when 17 = No AND 18 = Yes.
+        // Match executable Python reference: retain 18 whenever 17 = No,
+        // regardless of the answer recorded for finding 18.
         resolve(listOf(17, 18)) {
-            if (answers[17] == false && answers[18] == true) 18 else 17
+            if (answers[17] == false) 18 else 17
         }
 
         val prGroup = listOf(7, 8, 9).filter { it in answers }
