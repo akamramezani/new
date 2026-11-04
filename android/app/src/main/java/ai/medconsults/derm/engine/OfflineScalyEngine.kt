@@ -88,10 +88,7 @@ internal object ScalyCorrelationGuard {
 }
 
 class OfflineScalyEngine private constructor(private val presentation: JSONObject, private val assets: AssetManager?) {
-    constructor(assets: AssetManager) : this(
-        assets.open("knowledge/presentation_scaly.json")
-            .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }, assets
-    )
+    constructor(assets: AssetManager) : this(loadVerifiedKnowledgeJson(assets, "scaly"), assets)
 
     internal constructor(presentation: JSONObject, testFixture: Boolean) : this(presentation, null) {
         require(testFixture) { "The JSON constructor is reserved for deterministic scorer tests." }
@@ -111,8 +108,7 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
         val loadedId = presentation.optString("id", "fixture")
         val activePresentation = if (presentationId == loadedId) presentation else {
             requireNotNull(assets) { "A presentation asset source is required." }
-            assets.open("knowledge/presentation_${presentationId}.json")
-                .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+            loadVerifiedKnowledgeJson(assets, presentationId)
         }
         require(activePresentation.optString("id", presentationId) == presentationId) {
             "Presentation asset ID mismatch."
