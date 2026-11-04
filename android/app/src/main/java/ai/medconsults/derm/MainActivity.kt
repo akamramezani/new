@@ -345,13 +345,38 @@ private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds
                             if (t.sensitivity != null) Metric("SENSITIVITY", fmt(t.sensitivity) + "%", Modifier.weight(1f))
                             if (t.specificity != null) Metric("SPECIFICITY", fmt(t.specificity) + "%", Modifier.weight(1f))
                         }
-                        Text("Evidence " + t.grade + " · " + t.source, style = MaterialTheme.typography.labelSmall)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Evidence " + t.grade, style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.width(6.dp))
+                            Text(t.source, style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         if (selected == t.index) {
-                            Detail("When to use", t.whenToUse); Detail("Positive result", t.positive)
-                            Detail("Negative result", t.negative); Detail("Limitations / sampling", t.caveat)
+                            HorizontalDivider()
+                            Text("TEST INTERPRETATION", style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            TestInterpretationSection("Intended use", t.whenToUse)
+                            TestInterpretationSection("Positive result", t.positive)
+                            TestInterpretationSection("Negative result", t.negative)
+                            TestInterpretationSection("Limitations and sampling", t.caveat)
+                            Text("Sensitivity and specificity are source-reported values. Their applicability depends on the tested population, setting, threshold, and sampling; they are not standalone post-test probabilities.",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestInterpretationSection(title: String, body: String) {
+    if (body.isNotBlank()) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(body, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
