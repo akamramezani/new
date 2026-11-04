@@ -3,6 +3,7 @@ package ai.medconsults.derm.engine
 import android.content.res.AssetManager
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 
 data class PresentationDiagnosis(val id:String,val name:String,val baseWeight:Double?,val grade:String,val source:String,val look:String,val supporting:List<String>,val opposing:List<String>,val clinicalFeatures:String,val dermoscopy:String,val histopathology:String,val associations:String,val management:String,val locations:List<String>,val pattern:String)
 data class PresentationStopRule(val label:String,val action:String)
@@ -17,7 +18,13 @@ class PresentationCatalog(private val assets:AssetManager) {
  fun load(id:String):PresentationData {
   require(id in presentationIds) { "Unknown presentation: $id" }
   val meta=manifest.getJSONObject("presentations").getJSONObject(id)
-  val j=assets.open("knowledge/${meta.getString("file")}").bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+  val bytes=assets.open("knowledge/${meta.getString("file")}").use { it.readBytes() }
+  val expectedHash=meta.optString("sha256")
+  require(expectedHash.matches(Regex("[0-9a-fA-F]{64}"))) { "Missing or invalid manifest checksum for $id" }
+  val actualHash=MessageDigest.getInstance("SHA-256").digest(bytes)
+   .joinToString("") { "%02x".format(it) }
+  require(actualHash.equals(expectedHash,ignoreCase=true)) { "Knowledge asset checksum mismatch for $id" }
+  val j=JSONObject(bytes.toString(Charsets.UTF_8))
   require(j.optString("id")==id) { "Presentation ID mismatch for $id" }
   val findings=objects(j,"find").mapIndexed { i,o ->
    val factors=linkedMapOf<String,Pair<Double,Double>>(); val f=o.optJSONObject("f")
@@ -34,7 +41,31 @@ class PresentationCatalog(private val assets:AssetManager) {
    PresentationContext(i,o.optString("l"),if(a!=null&&a.length()>=2)a.optInt(0) to a.optInt(1) else null,o.optString("sex").takeIf { it.isNotBlank() },m,o.optString("c"),o.optString("s"))
   }
   val stops=objects(j,"stop").map { PresentationStopRule(it.optString("l"),it.optString("a")) }
+  validateManifestCounts(id,meta,findings.size,diagnoses.size,tests.size,contexts.size,stops.size)
+  require(diagnoses.all { it.id.isNotBlank() } && diagnoses.map { it.id }.distinct().size==diagnoses.size) {
+   "Missing or duplicate diagnosis IDs in $id"
+  }
+  require(findings.all { it.label.isNotBlank() } && tests.all { it.label.isNotBlank() } &&
+   contexts.all { it.label.isNotBlank() } && stops.all { it.label.isNotBlank() && it.action.isNotBlank() }) {
+   "Knowledge asset contains an unlabeled entry in $id"
+  }
   return PresentationData(id,j.optString("grp"),j.optString("label",id),j.optString("q"),j.optString("lead"),j.optString("flag"),stops,findings,diagnoses,tests,contexts)
+ }
+ private fun validateManifestCounts(
+  id:String,meta:JSONObject,findings:Int,diagnoses:Int,tests:Int,contexts:Int,stops:Int
+ ) {
+  val actual=mapOf(
+   "findings" to findings,
+   "diagnoses" to diagnoses,
+   "tests" to tests,
+   "context_modifiers" to contexts,
+   "urgent_rules" to stops
+  )
+  actual.forEach { (key,value) ->
+   require(meta.has(key) && meta.optInt(key,-1)==value) {
+    "Knowledge manifest count mismatch for $id ($key): expected ${meta.optInt(key,-1)}, loaded $value"
+   }
+  }
  }
  private fun objects(o:JSONObject,k:String):List<JSONObject>{val a=o.optJSONArray(k)?:JSONArray();return (0 until a.length()).mapNotNull{a.optJSONObject(it)}}
  private fun strings(a:JSONArray?):List<String> = if(a==null) emptyList() else (0 until a.length()).mapNotNull{a.optString(it).takeIf{v->v.isNotBlank()}}
