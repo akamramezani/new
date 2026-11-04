@@ -99,7 +99,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                             try { result = engine.score(answers.toMap()); scoreError = null }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
                         })
-                    Screen.TESTS -> TestsScreen(p, selectedTest) { selectedTest = it }
+                    Screen.TESTS -> TestsScreen(p, selectedTest, result?.ranked?.take(3)?.map { it.id }.orEmpty()) { selectedTest = it }
                     Screen.REFERENCE -> ReferenceScreen(p, selectedDx) { selectedDx = it }
                 }
             }
@@ -299,14 +299,20 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TestsScreen(p: PresentationData, selected: Int?, onSelect: (Int?) -> Unit) {
+private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds: List<String>, onSelect: (Int?) -> Unit) {
     var targetMenu by remember(p.id) { mutableStateOf(false) }
     val allTargets = "All targets"
+    val leadingTargets = p.tests.map { it.target }.filter { it.isNotBlank() && it in leadingDiagnosisIds }.distinct().sorted()
+    val leadingFilter = "Current top-three diagnoses (exact source match)"
     val targets = remember(p.id) {
         listOf(allTargets) + p.tests.map { it.target }.filter { it.isNotBlank() }.distinct().sorted()
     }
     var selectedTarget by remember(p.id) { mutableStateOf(allTargets) }
-    val visibleTests = p.tests.filter { selectedTarget == allTargets || it.target == selectedTarget }
+    val visibleTests = when (selectedTarget) {
+        allTargets -> p.tests
+        leadingFilter -> p.tests.filter { it.target in leadingTargets }
+        else -> p.tests.filter { it.target == selectedTarget }
+    }
     Column(Modifier.fillMaxSize()) {
         Text("Investigations and confirmation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(visibleTests.size.toString() + " of " + p.tests.size + " source tests · tap a test for interpretation")
@@ -321,7 +327,7 @@ private fun TestsScreen(p: PresentationData, selected: Int?, onSelect: (Int?) ->
                 shape = RoundedCornerShape(14.dp)
             )
             ExposedDropdownMenu(expanded = targetMenu, onDismissRequest = { targetMenu = false }) {
-                targets.forEach { target ->
+                (listOf(allTargets) + (if (leadingTargets.isNotEmpty()) listOf(leadingFilter) else emptyList()) + targets.drop(1)).forEach { target ->
                     DropdownMenuItem(
                         text = { Text(target) },
                         onClick = { selectedTarget = target; targetMenu = false }
