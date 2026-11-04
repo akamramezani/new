@@ -36,6 +36,9 @@ jobs:
       - name: Validate offline dermatology knowledge
         run: python3 tools/validate_derm_knowledge.py
 
+      - name: Run offline scoring regression tests
+        run: gradle -p android :app:testDebugUnitTest
+
       - name: Build debug APK
         run: gradle -p android assembleDebug
 
