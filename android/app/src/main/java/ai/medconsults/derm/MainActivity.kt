@@ -90,8 +90,13 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             data?.let { p ->
                 when (screen) {
-                    Screen.HOME -> HomeScreen(p, answers.size, result, scoreError,
+                    Screen.HOME -> HomeScreen(
+                        p, answers.toMap(), result, scoreError, selectedContexts,
+                        patientAge, patientSex, selectedTest,
                         onFindings = { screen = Screen.FINDINGS },
+                        onDifferential = { screen = Screen.DIFFERENTIAL },
+                        onTests = { screen = Screen.TESTS },
+                        onReference = { screen = Screen.REFERENCE },
                         onCalculate = {
                             try { result = engine.score(answers.toMap(), selectedId); scoreError = null; screen = Screen.DIFFERENTIAL }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
@@ -120,8 +125,25 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
 }
 
 @Composable
-private fun HomeScreen(p: PresentationData, answered: Int, result: ScalyResult?, error: String?,
-                       onFindings: () -> Unit, onCalculate: () -> Unit) {
+private fun HomeScreen(
+    p: PresentationData,
+    answers: Map<Int, Boolean>,
+    result: ScalyResult?,
+    error: String?,
+    selectedContexts: Set<Int>,
+    patientAge: String,
+    patientSex: String,
+    selectedTest: Int?,
+    onFindings: () -> Unit,
+    onDifferential: () -> Unit,
+    onTests: () -> Unit,
+    onReference: () -> Unit,
+    onCalculate: () -> Unit
+) {
+    val answered = answers.size
+    val presentCount = answers.values.count { it }
+    val absentCount = answered - presentCount
+    val selectedTestName = p.tests.firstOrNull { it.index == selectedTest }?.label
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(p.group.uppercase(Locale.US), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Text(p.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -158,6 +180,30 @@ private fun HomeScreen(p: PresentationData, answered: Int, result: ScalyResult?,
                 }
                 if (p.id != "scaly") Text("Generic reconstructed scoring only: default residual 0.11; no presentation-specific correlation or residual validation.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        }
+        Card {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Assessment review", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("A consolidated view of the information entered so far. Review each section before interpreting the output.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Metric("PRESENT", presentCount.toString(), Modifier.weight(1f))
+                    Metric("ABSENT", absentCount.toString(), Modifier.weight(1f))
+                    Metric("UNANSWERED", (p.findings.size - answered).coerceAtLeast(0).toString(), Modifier.weight(1f))
+                }
+                Text("Patient profile", fontWeight = FontWeight.SemiBold)
+                Text("Age: " + if (patientAge.isBlank()) "not specified" else "$patientAge years" +
+                    " · Sex: $patientSex", style = MaterialTheme.typography.bodySmall)
+                Text("Context items selected for review: " + selectedContexts.size,
+                    style = MaterialTheme.typography.bodySmall)
+                Text("Investigation selected: " + (selectedTestName ?: "none"),
+                    style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onDifferential, enabled = result != null) { Text("Review differential") }
+                    TextButton(onClick = onTests) { Text("Review tests") }
+                    TextButton(onClick = onReference) { Text("Review context") }
+                }
             }
         }
         if (result != null) {
