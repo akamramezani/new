@@ -108,7 +108,7 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
     }
     val safetyFlag: String = presentation.optString("flag", "")
 
-    fun score(answers: Map<Int, Boolean>, presentationId: String = "scaly"): ScalyResult {
+    fun score(answers: Map<Int, Boolean>, presentationId: String = presentation.optString("id", "scaly")): ScalyResult {
         val activePresentation = if (presentationId == presentation.optString("id")) presentation else {
             requireNotNull(assets) { "A presentation asset source is required." }
             assets.open("knowledge/presentation_${presentationId}.json")
