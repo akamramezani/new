@@ -34,25 +34,15 @@ data class ScalyResult(
     val dropped: List<DroppedFinding>
 )
 
-class OfflineScalyEngine(assets: AssetManager) {
-    private val presentation: JSONObject =
-        assets.open("knowledge/presentation_scaly.json")
-            .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
 
-    val presentationLabel: String = presentation.optString("label", "Scaly plaques and patches")
-    val lead: String = presentation.optString("lead", "")
-    val findings: List<Finding> = jsonArray(presentation, "find").mapIndexed { i, obj ->
-        Finding(i, obj.optString("l", "Finding ${i + 1}"))
-    }
-    val stopRules: List<Pair<String, String>> = jsonArray(presentation, "stop").map { obj ->
-        obj.optString("l") to obj.optString("a")
-    }
-    val safetyFlag: String = presentation.optString("flag", "")
-
-    fun score(answers: Map<Int, Boolean>): ScalyResult {
-        require(answers.keys.all { it in findings.indices }) { "Unknown finding index." }
-
+/**
+ * Correlation handling ported from the Python reference scorer.
+ * Only the seven explicitly mapped groups are reduced; all other findings remain.
+ */
+internal object ScalyCorrelationGuard {
+    fun retainedIndices(answers: Map<Int, Boolean>): Set<Int> {
         val retained = answers.keys.toMutableSet()
+
         fun resolve(indices: List<Int>, selector: () -> Int) {
             val available = indices.filter { it in answers }
             if (available.size < 2) return
@@ -76,8 +66,9 @@ class OfflineScalyEngine(assets: AssetManager) {
         resolve(listOf(13, 29)) {
             if (answers[29] == true) 29 else 13
         }
+        // Python reference: retain 18 only when 17 = No AND 18 = Yes.
         resolve(listOf(17, 18)) {
-            if (answers[17] == false) 18 else 17
+            if (answers[17] == false && answers[18] == true) 18 else 17
         }
 
         val prGroup = listOf(7, 8, 9).filter { it in answers }
@@ -92,6 +83,29 @@ class OfflineScalyEngine(assets: AssetManager) {
             }
             if (selected != null) prGroup.filter { it != selected }.forEach(retained::remove)
         }
+        return retained
+    }
+}
+
+class OfflineScalyEngine(assets: AssetManager) {
+    private val presentation: JSONObject =
+        assets.open("knowledge/presentation_scaly.json")
+            .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+
+    val presentationLabel: String = presentation.optString("label", "Scaly plaques and patches")
+    val lead: String = presentation.optString("lead", "")
+    val findings: List<Finding> = jsonArray(presentation, "find").mapIndexed { i, obj ->
+        Finding(i, obj.optString("l", "Finding ${i + 1}"))
+    }
+    val stopRules: List<Pair<String, String>> = jsonArray(presentation, "stop").map { obj ->
+        obj.optString("l") to obj.optString("a")
+    }
+    val safetyFlag: String = presentation.optString("flag", "")
+
+    fun score(answers: Map<Int, Boolean>): ScalyResult {
+        require(answers.keys.all { it in findings.indices }) { "Unknown finding index." }
+
+        val retained = ScalyCorrelationGuard.retainedIndices(answers).toMutableSet()
 
         val dropped = answers.keys.filter { it !in retained }.sorted().map {
             DroppedFinding(it, answers.getValue(it), findings[it].label)
