@@ -312,6 +312,10 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
 private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, selected: String?, onSelect: (String?) -> Unit,
                                answered: Int, error: String?, onCalculate: () -> Unit) {
     var compareTop by remember(result) { mutableStateOf(false) }
+    var diagnosisSearch by remember(p.id) { mutableStateOf("") }
+    var topFiveOnly by remember(p.id) { mutableStateOf(false) }
+    val searchedRanked = result?.ranked?.filter { it.name.contains(diagnosisSearch, ignoreCase = true) }.orEmpty()
+    val visibleRanked = if (topFiveOnly) searchedRanked.take(5) else searchedRanked
     Column(Modifier.fillMaxSize()) {
         Text("Differential diagnosis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Ranked shortlist and visual comparison", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -332,11 +336,18 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
             if (p.id != "scaly") Text("Generic reference scoring · fixed 0.11 residual · no presentation-specific correlation handling. Not clinically validated.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text("Bars show the reconstructed model's normalised weights, not validated clinical probabilities.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(value = diagnosisSearch, onValueChange = { diagnosisSearch = it },
+                label = { Text("Search diagnoses") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = topFiveOnly, onClick = { topFiveOnly = !topFiveOnly }, label = { Text("Top five only") })
+                Text("\${visibleRanked.size} of \${result.ranked.size} diagnoses shown",
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
                 if (compareTop) item(key = "diagnosis-comparison") {
                     DiagnosisComparison(result.ranked.take(3).mapNotNull { ranked -> p.diagnoses.firstOrNull { it.id == ranked.id } })
                 }
-                items(result.ranked, key = { it.id }) { dx ->
+                items(visibleRanked, key = { it.id }) { dx ->
                     Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == dx.id) null else dx.id) }) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
