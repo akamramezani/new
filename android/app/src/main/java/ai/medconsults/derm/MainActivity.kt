@@ -239,7 +239,7 @@ private fun HomeScreen(
     val answered = answers.size
     val presentCount = answers.values.count { it }
     val absentCount = answered - presentCount
-    val selectedTestNames = p.tests.filter { it.index in selectedTests }.map { it.label }
+    val selectedTestInfo = p.tests.filter { it.index in selectedTests }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(p.group.uppercase(Locale.US), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Text(p.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -310,16 +310,28 @@ private fun HomeScreen(
                         Text("Context · $label", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                Text("Investigations selected for review: " +
-                    (if (selectedTestNames.isEmpty()) "none" else selectedTestNames.joinToString("; ")),
+                Text("Investigations selected for review: " + selectedTestInfo.size,
                     style = MaterialTheme.typography.bodySmall)
+                if (selectedTestInfo.isEmpty()) {
+                    Text("No investigations added to the review shortlist.", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    selectedTestInfo.forEach { test ->
+                        Text("Investigation · ${test.label}", style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold)
+                        Text("Target: ${test.target} · Evidence ${test.grade} · ${test.source}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onDifferential, enabled = result != null) { Text("Review differential") }
                     TextButton(onClick = onTests) { Text("Review tests") }
                     TextButton(onClick = onReference) { Text("Review context") }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onShare, enabled = answered > 0 || result != null) {
+                    OutlinedButton(onClick = onShare, enabled = answered > 0 || result != null ||
+                        selectedContexts.isNotEmpty() || selectedTests.isNotEmpty() ||
+                        patientAge.isNotBlank() || patientSex != "Not specified") {
                         Text("Share summary")
                     }
                     TextButton(
