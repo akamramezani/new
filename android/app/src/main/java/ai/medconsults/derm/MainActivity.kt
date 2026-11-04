@@ -89,7 +89,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                     Screen.HOME -> HomeScreen(p, answers.size, result, scoreError,
                         onFindings = { screen = Screen.FINDINGS },
                         onCalculate = {
-                            try { result = engine.score(answers.toMap()); scoreError = null; screen = Screen.DIFFERENTIAL }
+                            try { result = engine.score(answers.toMap(), selectedId); scoreError = null; screen = Screen.DIFFERENTIAL }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
                         })
                     Screen.FINDINGS -> FindingsScreen(p, answers, search, { search = it }) { result = null; scoreError = null }
@@ -140,9 +140,10 @@ private fun HomeScreen(p: PresentationData, answered: Int, result: ScalyResult?,
                 LinearProgressIndicator(progress = { if (p.findings.isEmpty()) 0f else answered.toFloat() / p.findings.size },
                     modifier = Modifier.fillMaxWidth().height(8.dp))
                 Button(onClick = onFindings, modifier = Modifier.fillMaxWidth()) { Text("Open clinical findings") }
-                if (p.id == "scaly") OutlinedButton(onClick = onCalculate, enabled = answered > 0, modifier = Modifier.fillMaxWidth()) {
-                    Text("Calculate differential")
-                } else Text("A verified scoring model is not yet available for this presentation.")
+                OutlinedButton(onClick = onCalculate, enabled = answered > 0, modifier = Modifier.fillMaxWidth()) {
+                    Text("Calculate provisional differential")
+                }
+                if (p.id != "scaly") Text("Generic reconstructed scoring only: default residual 0.11; no presentation-specific correlation or residual validation.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
@@ -206,9 +207,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
     Column(Modifier.fillMaxSize()) {
         Text("Differential diagnosis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Ranked shortlist and visual comparison", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (p.id != "scaly") {
-            EmptyCard("Scoring not enabled", "This presentation's knowledge data is present, but a validated scoring model and parity test vectors are still needed.")
-        } else if (result == null) {
+        if (result == null) {
             EmptyCard("No result calculated", "Complete the findings assessment and calculate the provisional ranking.")
             Button(onClick = onCalculate, enabled = answered > 0, modifier = Modifier.fillMaxWidth()) { Text("Calculate ranking") }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -219,6 +218,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                 Metric("RESIDUAL", fmt(result.residual * 100) + "%", Modifier.weight(1f))
             }
             Text("Relative ranking chart", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            if (p.id != "scaly") Text("Generic reference scoring · fixed 0.11 residual · no presentation-specific correlation handling. Not clinically validated.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text("Bars show the reconstructed model's normalised weights, not validated clinical probabilities.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
@@ -283,7 +283,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                     }
                 }
                 item { OutlinedButton(onClick = onCalculate, modifier = Modifier.fillMaxWidth()) { Text("Recalculate") } }
-                item { Text("The current scaly scorer is provisional and has not been shown equivalent to the live website.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+                item { Text("This reconstructed scorer has not been shown equivalent to the live website or clinically validated.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
             }
         }
     }
