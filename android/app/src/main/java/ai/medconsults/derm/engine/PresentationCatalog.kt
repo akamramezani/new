@@ -88,6 +88,8 @@ class PresentationCatalog(private val assets:AssetManager) {
   }
   objects(j,"test").forEachIndexed { i,o ->
    require(o.optString("l").isNotBlank()) { "Unlabeled test in $id at $i" }
+   val target=o.optString("tgt")
+   require(target.isBlank()||target in known) { "Unknown target diagnosis $target in $id test $i" }
    listOf("se","sp").forEach { key ->
     if(o.has(key)&&!o.isNull(key)) {
      val value=o.optDouble(key,Double.NaN)
