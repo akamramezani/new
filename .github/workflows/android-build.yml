@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "android/**"
+      - "scoring.py"
       - ".github/workflows/android-build.yml"
   workflow_dispatch:
 
@@ -35,6 +36,9 @@ jobs:
 
       - name: Validate offline dermatology knowledge
         run: python3 tools/validate_derm_knowledge.py
+
+      - name: Generate Python-reference scoring golden vectors
+        run: python3 android/tools/generate_scoring_golden_vectors.py
 
       - name: Run offline scoring regression tests
         run: gradle -p android :app:testDebugUnitTest
