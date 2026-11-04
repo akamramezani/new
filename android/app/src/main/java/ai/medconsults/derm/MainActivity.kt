@@ -50,6 +50,8 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
     var selectedDx by remember(selectedId) { mutableStateOf<String?>(null) }
     var selectedTest by remember(selectedId) { mutableStateOf<Int?>(null) }
     var selectedContexts by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
+    var patientAge by remember(selectedId) { mutableStateOf("") }
+    var patientSex by remember(selectedId) { mutableStateOf("Not specified") }
     var search by remember(selectedId) { mutableStateOf("") }
     LaunchedEffect(selectedId) {
         try { data = catalog.load(selectedId); error = null }
@@ -102,8 +104,10 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                         })
                     Screen.TESTS -> TestsScreen(p, selectedTest, result?.ranked?.take(3)?.map { it.id }.orEmpty()) { selectedTest = it }
                     Screen.REFERENCE -> ReferenceScreen(
-                        p, selectedDx, selectedContexts,
+                        p, selectedDx, selectedContexts, patientAge, patientSex,
                         onDiagnosisSelect = { selectedDx = it },
+                        onPatientAgeChange = { patientAge = it.filter(Char::isDigit).take(3) },
+                        onPatientSexChange = { patientSex = it },
                         onContextToggle = { index ->
                             selectedContexts = if (index in selectedContexts) selectedContexts - index
                             else selectedContexts + index
@@ -395,7 +399,11 @@ private fun ReferenceScreen(
     p: PresentationData,
     selected: String?,
     selectedContexts: Set<Int>,
+    patientAge: String,
+    patientSex: String,
     onDiagnosisSelect: (String?) -> Unit,
+    onPatientAgeChange: (String) -> Unit,
+    onPatientSexChange: (String) -> Unit,
     onContextToggle: (Int) -> Unit
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -406,7 +414,20 @@ private fun ReferenceScreen(
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Patient context review", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("${selectedContexts.size} of ${p.contexts.size} context items selected")
-                    Text("Select relevant history for review. These selections are recorded only in this screen and do not alter the provisional differential or trigger automated triage.",
+                    Text("Optional patient characteristics for checking source applicability. Leave unspecified when unknown.")
+                    OutlinedTextField(
+                        value = patientAge,
+                        onValueChange = onPatientAgeChange,
+                        label = { Text("Age in years (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        listOf("Not specified", "Female", "Male").forEach { option ->
+                            FilterChip(selected = patientSex == option, onClick = { onPatientSexChange(option) }, label = { Text(option) })
+                        }
+                    }
+                    Text("Selections are for context review only; they do not alter the provisional differential or trigger automated triage.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -436,9 +457,17 @@ private fun ReferenceScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(c.label, fontWeight = FontWeight.SemiBold)
                             c.ageRange?.let { Text("Source age range: " + it.first + "–" + it.second) }
+                            val parsedAge = patientAge.toIntOrNull()?.takeIf { it in 0..120 }
+                            val ageStatus = when {
+                                c.ageRange == null -> null
+                                parsedAge == null -> "Age applicability: not assessed"
+                                parsedAge in c.ageRange.first..c.ageRange.second -> "Age applicability: within source range"
+                                else -> "Age applicability: outside source range"
+                            }
+                            ageStatus?.let { Text(it, color = if (it.endsWith("outside source range")) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall) }
                             when (c.sex) {
-                                "f" -> Text("Source sex applicability: Female")
-                                "m" -> Text("Source sex applicability: Male")
+                                "f" -> Text("Source sex applicability: Female · " + when (patientSex) { "Female" -> "matches selected profile"; "Male" -> "does not match selected profile"; else -> "not assessed" }, color = if (patientSex == "Male") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                "m" -> Text("Source sex applicability: Male · " + when (patientSex) { "Male" -> "matches selected profile"; "Female" -> "does not match selected profile"; else -> "not assessed" }, color = if (patientSex == "Female") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
                             Text("Source diagnosis keys: " + c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
                             Text("Evidence " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
