@@ -25,9 +25,60 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val catalog = PresentationCatalog(assets)
-        val engine = OfflineScalyEngine(assets)
-        setContent { MaterialTheme { DermatologyApp(catalog, engine) } }
+        // Validate the manifest and the default scoring asset before exposing the UI.
+        // A corrupt or incomplete offline knowledge bundle must fail closed, not crash
+        // during Activity creation or display a partially initialized assessment.
+        val startup = runCatching {
+            val catalog = PresentationCatalog(assets)
+            require(catalog.presentationIds.isNotEmpty()) { "No presentations are available." }
+            val engine = OfflineScalyEngine(assets)
+            catalog to engine
+        }
+        setContent {
+            MaterialTheme {
+                startup.fold(
+                    onSuccess = { (catalog, engine) -> DermatologyApp(catalog, engine) },
+                    onFailure = { failure ->
+                        StartupFailureScreen(
+                            message = failure.message ?: "The offline knowledge bundle could not be loaded."
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StartupFailureScreen(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                "MedConsults Dermatology",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Offline knowledge could not be verified",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("The assessment has not been started because its local knowledge files could not be safely loaded.")
+            Spacer(Modifier.height(8.dp))
+            Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            Text("Please install a complete, trusted app build. Do not use an incomplete or modified knowledge bundle for clinical assessment.")
+        }
     }
 }
 
