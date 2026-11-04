@@ -540,10 +540,17 @@ private fun ReferenceScreen(
             c.grade.contains(referenceSearch, ignoreCase = true) ||
             c.multipliers.keys.any { it.contains(referenceSearch, ignoreCase = true) }
     }
+    val visibleStopRules = p.stopRules.filter { rule ->
+        referenceSearch.isBlank() || rule.label.contains(referenceSearch, ignoreCase = true) ||
+            rule.action.contains(referenceSearch, ignoreCase = true)
+    }
+    val showSafetyFlag = referenceSearch.isBlank() ||
+        p.safetyFlag.contains(referenceSearch, ignoreCase = true)
     Column(Modifier.fillMaxSize()) {
         Text("Clinical reference library", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(visibleDiagnoses.size.toString() + " of " + p.diagnoses.size + " diagnosis profiles · " +
-            visibleContexts.size + " of " + p.contexts.size + " context modifiers · " + p.stopRules.size + " stop rules")
+            visibleContexts.size + " of " + p.contexts.size + " context modifiers · " +
+            visibleStopRules.size + " of " + p.stopRules.size + " stop rules")
         OutlinedTextField(
             value = referenceSearch,
             onValueChange = { referenceSearch = it },
@@ -575,6 +582,27 @@ private fun ReferenceScreen(
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            if (showSafetyFlag && p.safetyFlag.isNotBlank()) item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Presentation safety flag", fontWeight = FontWeight.Bold)
+                        Text(p.safetyFlag)
+                        Text("Reference warning only; this prototype does not perform automated triage.",
+                            style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            if (visibleStopRules.isNotEmpty()) item {
+                Text("Escalation and stop rules", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            items(visibleStopRules) { rule ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(rule.label, fontWeight = FontWeight.SemiBold)
+                        Text(rule.action)
+                    }
+                }
+            }
             items(visibleDiagnoses, key = { it.id }) { d ->
                 Card(Modifier.fillMaxWidth().clickable { onDiagnosisSelect(if (selected == d.id) null else d.id) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
