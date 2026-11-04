@@ -43,18 +43,23 @@ def validate() -> int:
         fail(errors, f"Bootstrap/manifest presentation mismatch: bootstrap={sorted(expected)}, manifest={sorted(entries)}")
 
     totals = {key: 0 for key in ("diagnoses", "findings", "tests", "context_modifiers", "urgent_rules")}
+    seen_files: set[str] = set()
     for pid in sorted(expected | set(entries)):
         entry = entries.get(pid, {})
         filename = entry.get("file", f"presentation_{pid}.json") if isinstance(entry, dict) else f"presentation_{pid}.json"
+        if filename in seen_files:
+            fail(errors, f"{pid}: duplicate manifest asset filename {filename}")
+        seen_files.add(filename)
         path = ASSETS / filename
         if not path.is_file():
             fail(errors, f"{pid}: missing asset {filename}")
             continue
         raw = path.read_bytes()
-        if isinstance(entry, dict) and entry.get("sha256"):
-            digest = hashlib.sha256(raw).hexdigest()
-            if digest != entry["sha256"]:
-                fail(errors, f"{pid}: SHA256 mismatch")
+        expected_hash = entry.get("sha256") if isinstance(entry, dict) else None
+        if not isinstance(expected_hash, str) or len(expected_hash) != 64 or any(ch not in "0123456789abcdefABCDEF" for ch in expected_hash):
+            fail(errors, f"{pid}: manifest SHA256 must be 64 hexadecimal characters")
+        elif hashlib.sha256(raw).hexdigest().lower() != expected_hash.lower():
+            fail(errors, f"{pid}: SHA256 mismatch")
         try:
             data = json.loads(raw.decode("utf-8"))
         except Exception as exc:
@@ -118,15 +123,18 @@ def validate() -> int:
                     fail(errors, f"{pid}: test {i} has invalid {field} percentage")
 
         for i, context in enumerate(data["ctx"]):
-            if not isinstance(context, dict) or not isinstance(context.get("l"), str):
+            if not isinstance(context, dict) or not isinstance(context.get("l"), str) or not context.get("l", "").strip():
                 fail(errors, f"{pid}: context modifier {i} needs a label")
                 continue
             age = context.get("age")
             if age is not None and (
                 not isinstance(age, list) or len(age) != 2 or
-                any(not isinstance(v, (int, float)) or not math.isfinite(v) for v in age) or age[0] > age[1]
+                any(type(v) is not int or v < 0 or v > 120 for v in age) or age[0] > age[1]
             ):
-                fail(errors, f"{pid}: context modifier {i} has invalid age range")
+                fail(errors, f"{pid}: context modifier {i} has invalid age range (expected integer bounds 0–120)")
+            sex = context.get("sex")
+            if sex not in (None, "", "f", "m"):
+                fail(errors, f"{pid}: context modifier {i} has invalid sex code {sex!r}")
             multipliers = context.get("m", {})
             if not isinstance(multipliers, dict):
                 fail(errors, f"{pid}: context modifier {i} multipliers must be an object")
@@ -138,7 +146,7 @@ def validate() -> int:
                     fail(errors, f"{pid}: context modifier {i} has invalid multiplier for {dx_id}")
 
         for i, rule in enumerate(data["stop"]):
-            if not isinstance(rule, dict) or not isinstance(rule.get("l"), str) or not isinstance(rule.get("a"), str):
+            if not isinstance(rule, dict) or not isinstance(rule.get("l"), str) or not rule.get("l", "").strip() or not isinstance(rule.get("a"), str) or not rule.get("a", "").strip():
                 fail(errors, f"{pid}: escalation rule {i} needs label and action")
 
         expected_counts = {
