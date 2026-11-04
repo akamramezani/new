@@ -73,6 +73,7 @@ class PythonGoldenVectorTest {
             }
         }
 
+        if (failures.isNotEmpty()) failures.forEach { println("GOLDEN_VECTOR_MISMATCH: $it") }
         assertTrue(
             "Python golden-vector discrepancies (${failures.size}):\n" + failures.take(30).joinToString("\n"),
             failures.isEmpty()
