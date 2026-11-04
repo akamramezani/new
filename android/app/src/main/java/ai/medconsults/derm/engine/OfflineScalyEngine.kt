@@ -20,6 +20,7 @@ data class RankedDiagnosis(
     val id: String,
     val name: String,
     val probability: Double,
+    val baseProbability: Double,
     val base: Double,
     val weight: Double,
     val contributions: List<FindingContribution>
@@ -145,12 +146,15 @@ class OfflineScalyEngine(assets: AssetManager) {
         }
 
         val total = weights.values.sum()
+        val totalBase = bases.values.sum()
         require(total.isFinite() && total > 0.0) { "Invalid total diagnosis weight." }
+        require(totalBase.isFinite() && totalBase > 0.0) { "Invalid total baseline weight." }
         val ranked = weights.map { (id, weight) ->
             RankedDiagnosis(
                 id = id,
                 name = names.getValue(id),
                 probability = (1.0 - residual) * weight / total,
+                baseProbability = (1.0 - residual) * bases.getValue(id) / totalBase,
                 base = bases.getValue(id),
                 weight = weight,
                 contributions = contributions.getValue(id).toList()
