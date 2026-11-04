@@ -50,7 +50,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
     var result by remember(selectedId) { mutableStateOf<ScalyResult?>(null) }
     var scoreError by remember(selectedId) { mutableStateOf<String?>(null) }
     var selectedDx by remember(selectedId) { mutableStateOf<String?>(null) }
-    var selectedTest by remember(selectedId) { mutableStateOf<Int?>(null) }
+    var selectedTests by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
     var selectedContexts by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
     var patientAge by remember(selectedId) { mutableStateOf("") }
     var patientSex by remember(selectedId) { mutableStateOf("Not specified") }
@@ -94,7 +94,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                 when (screen) {
                     Screen.HOME -> HomeScreen(
                         p, answers.toMap(), result, scoreError, selectedContexts,
-                        patientAge, patientSex, selectedTest,
+                        patientAge, patientSex, selectedTests,
                         onFindings = { screen = Screen.FINDINGS },
                         onDifferential = { screen = Screen.DIFFERENTIAL },
                         onTests = { screen = Screen.TESTS },
@@ -102,7 +102,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                         onShare = {
                             val report = buildAssessmentSummary(
                                 p, answers.toMap(), result, selectedContexts,
-                                patientAge, patientSex, selectedTest
+                                patientAge, patientSex, selectedTests
                             )
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
@@ -116,7 +116,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                             result = null
                             scoreError = null
                             selectedDx = null
-                            selectedTest = null
+                            selectedTests = emptySet()
                             selectedContexts = emptySet()
                             patientAge = ""
                             patientSex = "Not specified"
@@ -132,7 +132,9 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                             try { result = engine.score(answers.toMap(), p.id); scoreError = null }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
                         })
-                    Screen.TESTS -> TestsScreen(p, selectedTest, result?.ranked?.take(3)?.map { it.id }.orEmpty()) { selectedTest = it }
+                    Screen.TESTS -> TestsScreen(p, selectedTests, result?.ranked?.take(3)?.map { it.id }.orEmpty()) { index ->
+                        selectedTests = if (index in selectedTests) selectedTests - index else selectedTests + index
+                    }
                     Screen.REFERENCE -> ReferenceScreen(
                         p, selectedDx, selectedContexts, patientAge, patientSex,
                         onDiagnosisSelect = { selectedDx = it },
@@ -157,10 +159,10 @@ private fun buildAssessmentSummary(
     selectedContexts: Set<Int>,
     patientAge: String,
     patientSex: String,
-    selectedTest: Int?
+    selectedTests: Set<Int>
 ): String {
     val findingsByIndex = p.findings.associateBy { it.index }
-    val selectedTestInfo = p.tests.firstOrNull { it.index == selectedTest }
+    val selectedTestInfo = p.tests.filter { it.index in selectedTests }
     val selectedContextLabels = p.contexts.filter { it.index in selectedContexts }.map { it.label }
     return buildString {
         appendLine("MedConsults — Dermatology assessment summary")
@@ -178,10 +180,13 @@ private fun buildAssessmentSummary(
         }
         if (answers.isEmpty()) appendLine("No findings recorded.")
         appendLine()
-        appendLine("Investigation selected: ${selectedTestInfo?.label ?: "None"}")
-        selectedTestInfo?.let {
-            appendLine("Investigation target: ${it.target}")
-            appendLine("Investigation source: ${it.source}")
+        appendLine("Investigations selected for review (${selectedTestInfo.size})")
+        if (selectedTestInfo.isEmpty()) appendLine("None")
+        selectedTestInfo.forEach {
+            appendLine("• ${it.label}")
+            appendLine("  Target: ${it.target}")
+            appendLine("  Intended use: ${it.whenToUse}")
+            appendLine("  Source: ${it.source}")
         }
         appendLine("Context items selected for review (${selectedContextLabels.size})")
         if (selectedContextLabels.isEmpty()) appendLine("None")
@@ -218,7 +223,7 @@ private fun HomeScreen(
     selectedContexts: Set<Int>,
     patientAge: String,
     patientSex: String,
-    selectedTest: Int?,
+    selectedTests: Set<Int>,
     onFindings: () -> Unit,
     onDifferential: () -> Unit,
     onTests: () -> Unit,
@@ -231,7 +236,7 @@ private fun HomeScreen(
     val answered = answers.size
     val presentCount = answers.values.count { it }
     val absentCount = answered - presentCount
-    val selectedTestName = p.tests.firstOrNull { it.index == selectedTest }?.label
+    val selectedTestNames = p.tests.filter { it.index in selectedTests }.map { it.label }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(p.group.uppercase(Locale.US), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Text(p.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -285,7 +290,8 @@ private fun HomeScreen(
                     " · Sex: $patientSex", style = MaterialTheme.typography.bodySmall)
                 Text("Context items selected for review: " + selectedContexts.size,
                     style = MaterialTheme.typography.bodySmall)
-                Text("Investigation selected: " + (selectedTestName ?: "none"),
+                Text("Investigations selected for review: " +
+                    (if (selectedTestNames.isEmpty()) "none" else selectedTestNames.joinToString("; ")),
                     style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onDifferential, enabled = result != null) { Text("Review differential") }
@@ -299,7 +305,7 @@ private fun HomeScreen(
                     TextButton(
                         onClick = { showResetConfirmation = true },
                         enabled = answered > 0 || result != null || selectedContexts.isNotEmpty() ||
-                            patientAge.isNotBlank() || patientSex != "Not specified" || selectedTest != null
+                            patientAge.isNotBlank() || patientSex != "Not specified" || selectedTests.isNotEmpty()
                     ) { Text("Reset assessment", color = MaterialTheme.colorScheme.error) }
                 }
             }
@@ -568,7 +574,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds: List<String>, onSelect: (Int?) -> Unit) {
+private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosisIds: List<String>, onSelect: (Int) -> Unit) {
     var targetMenu by remember(p.id) { mutableStateOf(false) }
     val allTargets = "All targets"
     val leadingTargets = p.tests.map { it.target }.filter { it.isNotBlank() && it in leadingDiagnosisIds }.distinct().sorted()
@@ -590,7 +596,21 @@ private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds
     }
     Column(Modifier.fillMaxSize()) {
         Text("Investigations and confirmation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(visibleTests.size.toString() + " of " + p.tests.size + " source tests · tap a test for interpretation")
+        Text(visibleTests.size.toString() + " of " + p.tests.size + " source tests · select any number for a review shortlist")
+        Text(selected.size.toString() + " investigation(s) selected",
+            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        if (selected.isNotEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Investigation shortlist", fontWeight = FontWeight.Bold)
+                    p.tests.filter { it.index in selected }.forEach { test ->
+                        Text("• ${test.label} — ${test.target}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Selections are a review checklist only; they do not constitute an investigation order or recommendation.",
+                        style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
         OutlinedTextField(
             value = testSearch,
             onValueChange = { testSearch = it },
@@ -619,9 +639,13 @@ private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(visibleTests, key = { it.index }) { t ->
-                Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == t.index) null else t.index) }) {
+                Card(Modifier.fillMaxWidth().clickable { onSelect(t.index) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(t.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(t.label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            FilterChip(selected = t.index in selected, onClick = { onSelect(t.index) },
+                                label = { Text(if (t.index in selected) "Selected" else "Add") })
+                        }
                         Text("Target: " + t.target)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (t.sensitivity != null) Metric("SENSITIVITY", fmt(t.sensitivity) + "%", Modifier.weight(1f))
@@ -634,7 +658,11 @@ private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds
                             Text(t.source, style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (selected == t.index) {
+                        if (t.index in selected) {
+                            Text("Added to the review shortlist", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (t.index == selected.lastOrNull()) {
                             HorizontalDivider()
                             Text("TEST INTERPRETATION", style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
