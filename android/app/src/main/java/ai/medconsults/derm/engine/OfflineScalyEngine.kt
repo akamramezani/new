@@ -7,12 +7,22 @@ import kotlin.math.exp
 import kotlin.math.pow
 
 data class Finding(val index: Int, val label: String)
+data class FindingContribution(
+    val findingIndex: Int,
+    val findingLabel: String,
+    val answer: Boolean,
+    val sourceMultiplier: Double,
+    val appliedMultiplier: Double,
+    val weightBefore: Double,
+    val weightAfter: Double
+)
 data class RankedDiagnosis(
     val id: String,
     val name: String,
     val probability: Double,
     val base: Double,
-    val weight: Double
+    val weight: Double,
+    val contributions: List<FindingContribution>
 )
 data class DroppedFinding(val index: Int, val answer: Boolean, val label: String)
 data class ScalyResult(
@@ -91,6 +101,7 @@ class OfflineScalyEngine(assets: AssetManager) {
         val weights = linkedMapOf<String, Double>()
         val names = linkedMapOf<String, String>()
         val bases = linkedMapOf<String, Double>()
+        val contributions = linkedMapOf<String, MutableList<FindingContribution>>()
 
         diagnoses.forEach { dx ->
             val id = dx.getString("id")
@@ -99,6 +110,7 @@ class OfflineScalyEngine(assets: AssetManager) {
             weights[id] = base
             names[id] = dx.optString("n", id)
             bases[id] = base
+            contributions[id] = mutableListOf()
         }
 
         effective.sorted().forEach { index ->
@@ -113,7 +125,21 @@ class OfflineScalyEngine(assets: AssetManager) {
                     require(multiplier.isFinite() && multiplier > 0.0) {
                         "Invalid multiplier for $diagnosisId at finding $index"
                     }
-                    weights[diagnosisId] = weights.getValue(diagnosisId) * multiplier.pow(0.7)
+                    val before = weights.getValue(diagnosisId)
+                    val applied = multiplier.pow(0.7)
+                    val after = before * applied
+                    weights[diagnosisId] = after
+                    contributions.getValue(diagnosisId).add(
+                        FindingContribution(
+                            findingIndex = index,
+                            findingLabel = findings[index].label,
+                            answer = answers.getValue(index),
+                            sourceMultiplier = multiplier,
+                            appliedMultiplier = applied,
+                            weightBefore = before,
+                            weightAfter = after
+                        )
+                    )
                 }
             }
         }
@@ -126,7 +152,8 @@ class OfflineScalyEngine(assets: AssetManager) {
                 name = names.getValue(id),
                 probability = (1.0 - residual) * weight / total,
                 base = bases.getValue(id),
-                weight = weight
+                weight = weight,
+                contributions = contributions.getValue(id).toList()
             )
         }.sortedByDescending { it.probability }
 
