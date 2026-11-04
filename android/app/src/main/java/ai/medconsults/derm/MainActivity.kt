@@ -226,11 +226,26 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
     var groupMenu by remember(p.id) { mutableStateOf(false) }
     var selectedGroup by remember(p.id) { mutableStateOf("All groups") }
     val groups = remember(p.id) { listOf("All groups") + p.findings.map { it.group }.filter { it.isNotBlank() }.distinct().sorted() }
-    val visibleFindings = p.findings.filter {
+    var answerFilter by remember(p.id) { mutableStateOf("All") }
+    val searchedFindings = p.findings.filter {
         (selectedGroup == "All groups" || it.group == selectedGroup) &&
             (search.isBlank() || it.label.contains(search, true) || it.group.contains(search, true))
     }
+    val visibleFindings = searchedFindings.filter {
+        when (answerFilter) {
+            "Unanswered" -> it.index !in answers
+            "Present" -> answers[it.index] == true
+            "Absent" -> answers[it.index] == false
+            else -> true
+        }
+    }
     val visibleAnswered = visibleFindings.count { it.index in answers }
+    val statusCounts = listOf(
+        "All" to searchedFindings.size,
+        "Unanswered" to searchedFindings.count { it.index !in answers },
+        "Present" to searchedFindings.count { answers[it.index] == true },
+        "Absent" to searchedFindings.count { answers[it.index] == false }
+    )
     Column(Modifier.fillMaxSize()) {
         Text("Clinical findings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(answers.size.toString() + " of " + p.findings.size + " answered overall · " +
@@ -248,6 +263,18 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
                     DropdownMenuItem(text = { Text("$group ($count)") },
                         onClick = { selectedGroup = group; groupMenu = false })
                 }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            statusCounts.forEach { (status, count) ->
+                FilterChip(
+                    selected = answerFilter == status,
+                    onClick = { answerFilter = status },
+                    label = { Text("$status ($count)") }
+                )
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
