@@ -240,16 +240,20 @@ def main():
 
     print("\nZone CI classifications:")
     for label in ("advantage", "disadvantage", "inconclusive"):
-        names = [z.split(":")[0] for z in zone_failures if z.endswith(label)]
+        names = [z.split(":")[0] for z in zone_failures if z.endswith(": " + label)]
         print(f"  {label}: {len(names)} {names}")
     print("\nPredictor reconstruction max abs difference:", reconstruction_error)
     print("18-feature raw prediction range:",
           float(np.min(P18)), "to", float(np.max(P18)))
     print("Raw predictions outside [0,1]:",
           int(np.sum((P18 < 0) | (P18 > 1))))
-    print("\nFold selection reproduced:",
-          all(a["alpha"] == b["alpha"] and a["gamma"] == b["gamma"]
-              for a, b in zip(fold_details, saved["fold_results"])))
+    fold_match = all(
+        a["alpha"] == b["alpha"] and a["gamma"] == b["gamma"]
+        and abs(a["inner_mae"] - b["best_inner_mae"]) <= 1e-12
+        and a["grid_count"] == b["grid_combinations"]
+        for a, b in zip(fold_details, saved["fold_results"]))
+    check(fold_match, "Fold hyperparameters or inner-CV scores differ.")
+    print("\\nFold selection reproduced:", fold_match)
     print("Failures:", failures)
     if failures:
         raise SystemExit(1)
