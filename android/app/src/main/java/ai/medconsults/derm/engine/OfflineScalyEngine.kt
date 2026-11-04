@@ -88,13 +88,13 @@ internal object ScalyCorrelationGuard {
     }
 }
 
-class OfflineScalyEngine private constructor(private val presentation: JSONObject) {
+class OfflineScalyEngine private constructor(private val presentation: JSONObject, private val assets: AssetManager?) {
     constructor(assets: AssetManager) : this(
         assets.open("knowledge/presentation_scaly.json")
-            .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+            .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }, assets
     )
 
-    internal constructor(presentation: JSONObject, testFixture: Boolean) : this(presentation) {
+    internal constructor(presentation: JSONObject, testFixture: Boolean) : this(presentation, null) {
         require(testFixture) { "The JSON constructor is reserved for deterministic scorer tests." }
     }
 
@@ -108,17 +108,24 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
     }
     val safetyFlag: String = presentation.optString("flag", "")
 
-    fun score(answers: Map<Int, Boolean>): ScalyResult {
-        require(answers.keys.all { it in findings.indices }) { "Unknown finding index." }
+    fun score(answers: Map<Int, Boolean>, presentationId: String = "scaly"): ScalyResult {
+        val activePresentation = if (presentationId == presentation.optString("id")) presentation else {
+            requireNotNull(assets) { "A presentation asset source is required." }
+            assets.open("knowledge/presentation_${presentationId}.json")
+                .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+        }
+        require(activePresentation.optString("id") == presentationId) { "Presentation asset ID mismatch." }
+        val activeFindings = jsonArray(activePresentation, "find")
+        require(answers.keys.all { it in activeFindings.indices }) { "Unknown finding index." }
 
-        val retained = ScalyCorrelationGuard.retainedIndices(answers).toMutableSet()
+        val retained = if (presentationId == "scaly") ScalyCorrelationGuard.retainedIndices(answers).toMutableSet() else answers.keys.toMutableSet()
 
         val dropped = answers.keys.filter { it !in retained }.sorted().map {
-            DroppedFinding(it, answers.getValue(it), findings[it].label)
+            DroppedFinding(it, answers.getValue(it), activeFindings[it].optString("l", "Finding ${it + 1}"))
         }
         val effective = retained.intersect(answers.keys)
-        val residual = 0.05 + 0.06 * exp(-effective.size / 3.0)
-        val diagnoses = jsonArray(presentation, "dx")
+        val residual = if (presentationId == "scaly") 0.05 + 0.06 * exp(-effective.size / 3.0) else 0.11
+        val diagnoses = jsonArray(activePresentation, "dx")
         val weights = linkedMapOf<String, Double>()
         val names = linkedMapOf<String, String>()
         val bases = linkedMapOf<String, Double>()
@@ -135,7 +142,7 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
         }
 
         effective.sorted().forEach { index ->
-            val finding = jsonArray(presentation, "find")[index]
+            val finding = activeFindings[index]
             val modifiers = finding.optJSONObject("f") ?: JSONObject()
             val multiplierPosition = if (answers.getValue(index)) 0 else 1
             modifiers.keys().forEach { diagnosisId ->
@@ -153,7 +160,7 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
                     contributions.getValue(diagnosisId).add(
                         FindingContribution(
                             findingIndex = index,
-                            findingLabel = findings[index].label,
+                            findingLabel = activeFindings[index].optString("l", "Finding ${index + 1}"),
                             answer = answers.getValue(index),
                             sourceMultiplier = multiplier,
                             appliedMultiplier = applied,
