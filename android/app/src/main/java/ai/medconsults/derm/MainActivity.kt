@@ -5,152 +5,371 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.medconsults.derm.engine.*
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
- override fun onCreate(savedInstanceState:Bundle?) {
-  super.onCreate(savedInstanceState)
-  val catalog=PresentationCatalog(assets); val engine=OfflineScalyEngine(assets)
-  setContent { MaterialTheme { DermatologyHome(catalog,engine) } }
- }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val catalog = PresentationCatalog(assets)
+        val engine = OfflineScalyEngine(assets)
+        setContent { MaterialTheme { DermatologyApp(catalog, engine) } }
+    }
+}
+
+private enum class Screen(val title: String, val glyph: String) {
+    HOME("Overview", "⌂"), FINDINGS("Findings", "＋"), DIFFERENTIAL("Differential", "▤"),
+    TESTS("Tests", "⚕"), REFERENCE("Reference", "☰")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DermatologyHome(catalog:PresentationCatalog,engine:OfflineScalyEngine) {
- val ids=remember{catalog.presentationIds}
- var selectedId by remember{mutableStateOf("scaly")}
- var menu by remember{mutableStateOf(false)}
- var data by remember{mutableStateOf<PresentationData?>(null)}
- var error by remember{mutableStateOf<String?>(null)}
- val answers=remember(selectedId){mutableStateMapOf<Int,Boolean>()}
- var result by remember(selectedId){mutableStateOf<ScalyResult?>(null)}
- var scoreError by remember(selectedId){mutableStateOf<String?>(null)}
- var selectedDx by remember(selectedId){mutableStateOf<String?>(null)}
- var selectedTest by remember(selectedId){mutableStateOf<Int?>(null)}
- var showContext by remember(selectedId){mutableStateOf(false)}
- LaunchedEffect(selectedId){try{data=catalog.load(selectedId);error=null}catch(e:Exception){data=null;error=e.message}}
- Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-  Text("MedConsults",style=MaterialTheme.typography.headlineMedium)
-  Text("Dermatology Differential Engine",style=MaterialTheme.typography.titleLarge)
-  Text("Shortlist · Discriminate · Confirm",style=MaterialTheme.typography.bodyLarge)
-  Text("Offline knowledge · ${ids.size} presentations",style=MaterialTheme.typography.labelMedium)
-  HorizontalDivider()
-  ExposedDropdownMenuBox(expanded=menu,onExpandedChange={menu=!menu}){
-   OutlinedTextField(value=data?.label?:selectedId,onValueChange={},readOnly=true,label={Text("Clinical presentation")},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(menu)},modifier=Modifier.menuAnchor().fillMaxWidth())
-   ExposedDropdownMenu(expanded=menu,onDismissRequest={menu=false}){ids.forEach{id->DropdownMenuItem(text={Text(runCatching{catalog.load(id).label}.getOrDefault(id))},onClick={selectedId=id;menu=false})}}
-  }
-  error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-  data?.let{p->
-   Text(p.group.uppercase(Locale.US),style=MaterialTheme.typography.labelLarge)
-   Text(p.label,style=MaterialTheme.typography.headlineSmall)
-   if(p.question.isNotBlank())Text(p.question,style=MaterialTheme.typography.titleMedium)
-   if(p.lead.isNotBlank())Text(p.lead)
-   Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.errorContainer)){
-    Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-     Text("Safety and escalation",style=MaterialTheme.typography.titleMedium)
-     Text(p.safetyFlag)
-     p.stopRules.forEachIndexed{i,r->Column(verticalArrangement=Arrangement.spacedBy(3.dp)){Text("${i+1}. ${r.label}",style=MaterialTheme.typography.titleSmall);Text(r.action,style=MaterialTheme.typography.bodyMedium)}}
-     Text("These are reference warnings, not automated triage. Assess urgency clinically.",style=MaterialTheme.typography.labelSmall)
+private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEngine) {
+    val ids = remember { catalog.presentationIds }
+    var selectedId by remember { mutableStateOf("scaly") }
+    var menu by remember { mutableStateOf(false) }
+    var screen by remember { mutableStateOf(Screen.HOME) }
+    var data by remember { mutableStateOf<PresentationData?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val answers = remember(selectedId) { mutableStateMapOf<Int, Boolean>() }
+    var result by remember(selectedId) { mutableStateOf<ScalyResult?>(null) }
+    var scoreError by remember(selectedId) { mutableStateOf<String?>(null) }
+    var selectedDx by remember(selectedId) { mutableStateOf<String?>(null) }
+    var selectedTest by remember(selectedId) { mutableStateOf<Int?>(null) }
+    var search by remember(selectedId) { mutableStateOf("") }
+    LaunchedEffect(selectedId) {
+        try { data = catalog.load(selectedId); error = null }
+        catch (e: Exception) { data = null; error = e.message ?: "Unable to load presentation" }
     }
-   }
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-    AssistChip(onClick={showContext=!showContext},label={Text("Context modifiers (${p.contexts.size})")})
-    AssistChip(onClick={selectedTest=null},label={Text("Tests (${p.tests.size})")})
-   }
-   if(showContext){
-    Text("Patient context reference",style=MaterialTheme.typography.titleLarge)
-    Text("The source package supplies these multipliers. This build displays them but does not apply them to probabilities.")
-    p.contexts.forEach{c->Card{Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
-     Text(c.label,style=MaterialTheme.typography.titleSmall)
-     c.ageRange?.let{Text("Age range encoded: ${it.first}–${it.second}")}
-     Text(c.multipliers.entries.joinToString(" · "){ "${it.key}: ×${fmt(it.value)}" })
-     Text("Evidence: ${c.grade} · ${c.source}",style=MaterialTheme.typography.labelSmall)
-    }}}
-   }
-   Text("Clinical findings",style=MaterialTheme.typography.titleLarge)
-   Text("Record only findings you have actually assessed. Unanswered items remain unknown.")
-   p.findings.forEach{f->
-    Card { Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-     Text("${f.index+1}. ${f.label}",style=MaterialTheme.typography.bodyLarge)
-     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-      FilterChip(selected=answers[f.index]==true,onClick={answers[f.index]=true;result=null},label={Text("Yes")})
-      FilterChip(selected=answers[f.index]==false,onClick={answers[f.index]=false;result=null},label={Text("No")})
-      if(f.index in answers)TextButton(onClick={answers.remove(f.index);result=null}){Text("Clear")}
-     }
-     Text("Finding group: ${f.group} · Evidence: ${f.grade} · ${f.source}",style=MaterialTheme.typography.labelSmall)
-     if(f.likelihoods.isNotEmpty())Text("Encoded likelihood factors (yes / no): "+f.likelihoods.entries.joinToString(" · "){"${it.key}: ${fmt(it.value.first)} / ${fmt(it.value.second)}"},style=MaterialTheme.typography.bodySmall)
-    }}
-   }
-   if(p.id=="scaly"){
-    Button(onClick={try{result=engine.score(answers.toMap());scoreError=null}catch(e:Exception){result=null;scoreError=e.message}},enabled=answers.isNotEmpty(),modifier=Modifier.fillMaxWidth()){Text("Calculate provisional scaly ranking")}
-    scoreError?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-    result?.let{o->
-     Text("Provisional ranking (not parity-validated)",style=MaterialTheme.typography.titleLarge)
-     Text("Answered: ${o.answeredCount} · Scored: ${o.scoredCount} · Residual: ${fmt(o.residual)}")
-     o.ranked.forEachIndexed{i,d->ListItem(headlineContent={Text("${i+1}. ${d.name}")},supportingContent={Text("Model weight: ${fmt(d.weight)}")},trailingContent={Text("${fmt(d.probability*100)}%")})}
-     if(o.dropped.isNotEmpty())Text("Correlated findings omitted: "+o.dropped.joinToString{it.label})
+    Scaffold(
+        topBar = {
+            TopAppBar(title = {
+                Column {
+                    Text("MedConsults", fontWeight = FontWeight.Bold)
+                    Text("DERMATOLOGY DECISION SUPPORT", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+            }, actions = { AssistChip(onClick = {}, label = { Text("OFFLINE") }); Spacer(Modifier.width(8.dp)) })
+        },
+        bottomBar = {
+            NavigationBar {
+                Screen.values().forEach { item ->
+                    NavigationBarItem(selected = screen == item, onClick = { screen = item },
+                        icon = { Text(item.glyph) }, label = { Text(item.title, maxLines = 1) })
+                }
+            }
+        }
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = !menu }) {
+                OutlinedTextField(value = data?.label ?: selectedId, onValueChange = {}, readOnly = true,
+                    label = { Text("Presenting morphology") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(menu) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(), shape = RoundedCornerShape(14.dp))
+                ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    ids.forEach { id -> DropdownMenuItem(
+                        text = { Text(runCatching { catalog.load(id).label }.getOrDefault(id)) },
+                        onClick = { selectedId = id; menu = false; screen = Screen.HOME })
+                    }
+                }
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            data?.let { p ->
+                when (screen) {
+                    Screen.HOME -> HomeScreen(p, answers.size, result, scoreError,
+                        onFindings = { screen = Screen.FINDINGS },
+                        onCalculate = {
+                            try { result = engine.score(answers.toMap()); scoreError = null; screen = Screen.DIFFERENTIAL }
+                            catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
+                        })
+                    Screen.FINDINGS -> FindingsScreen(p, answers, search, { search = it }) { result = null; scoreError = null }
+                    Screen.DIFFERENTIAL -> DifferentialScreen(p, result, selectedDx, { selectedDx = it },
+                        answers.size, scoreError, {
+                            try { result = engine.score(answers.toMap()); scoreError = null }
+                            catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
+                        })
+                    Screen.TESTS -> TestsScreen(p, selectedTest) { selectedTest = it }
+                    Screen.REFERENCE -> ReferenceScreen(p, selectedDx) { selectedDx = it }
+                }
+            }
+        }
     }
-   }else{
-    Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant)){
-     Column(Modifier.padding(12.dp)){Text("Scoring not yet enabled for this presentation",style=MaterialTheme.typography.titleMedium);Text("The source knowledge is available, but a verified scoring implementation and production parity test vectors are still required. No invented probability ranking is shown.")}
-    }
-   }
-   HorizontalDivider()
-   Text("Differential diagnoses (${p.diagnoses.size})",style=MaterialTheme.typography.titleLarge)
-   Text("Select a diagnosis to open its full offline clinical profile.")
-   p.diagnoses.forEach{d->
-    Card(Modifier.fillMaxWidth().clickable{selectedDx=if(selectedDx==d.id)null else d.id}){
-     Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-      Text(d.name,style=MaterialTheme.typography.titleMedium)
-      Text("Evidence grade: ${d.grade} · Source: ${d.source}",style=MaterialTheme.typography.labelSmall)
-      if(d.baseWeight!=null)Text("Source base weight: ${fmt(d.baseWeight)}",style=MaterialTheme.typography.labelSmall)
-      if(selectedDx==d.id){
-       ProfileSection("Typical presentation",d.look)
-       ProfileSection("Features supporting diagnosis",d.supporting.joinToString("\n• ","• "))
-       ProfileSection("Features arguing against",d.opposing.joinToString("\n• ","• "))
-       ProfileSection("Clinical features / confirmation",d.clinicalFeatures)
-       ProfileSection("Dermoscopy",d.dermoscopy)
-       ProfileSection("Histopathology",d.histopathology)
-       ProfileSection("Associations",d.associations)
-       ProfileSection("Management reference",d.management)
-       if(d.locations.isNotEmpty())ProfileSection("Typical sites",d.locations.joinToString(", "))
-       ProfileSection("Distribution pattern",d.pattern)
-      }
-     }
-    }
-   }
-   HorizontalDivider()
-   Text("Diagnostic tests and confirmation (${p.tests.size})",style=MaterialTheme.typography.titleLarge)
-   p.tests.forEach{t->
-    Card(Modifier.fillMaxWidth().clickable{selectedTest=if(selectedTest==t.index)null else t.index}){
-     Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-      Text(t.label,style=MaterialTheme.typography.titleMedium)
-      Text("Target: ${t.target} · Evidence: ${t.grade} · ${t.source}",style=MaterialTheme.typography.labelSmall)
-      if(t.sensitivity!=null||t.specificity!=null)Text("Sensitivity: ${t.sensitivity?.let{fmt(it)}?:"—"}% · Specificity: ${t.specificity?.let{fmt(it)}?:"—"}%")
-      if(selectedTest==t.index){
-       ProfileSection("When to use",t.whenToUse)
-       ProfileSection("Positive result",t.positive)
-       ProfileSection("Negative result",t.negative)
-       ProfileSection("Limitations / sampling",t.caveat)
-      }
-     }
-    }
-   }
-   Text("Package audit",style=MaterialTheme.typography.titleMedium)
-   Text("${p.diagnoses.size} diagnoses · ${p.findings.size} findings · ${p.tests.size} tests · ${p.contexts.size} context modifiers · ${p.stopRules.size} stop rules")
-  }
-  Text("Development prototype. Not a validated medical device and not for patient-care decisions. Source content is displayed for reference; scoring, adaptive question selection, post-test probability updating and automated triage are not yet validated or fully implemented.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error)
- }
 }
-@Composable private fun ProfileSection(title:String,value:String){
- if(value.isNotBlank())Column(verticalArrangement=Arrangement.spacedBy(2.dp)){Text(title,style=MaterialTheme.typography.labelLarge);Text(value,style=MaterialTheme.typography.bodyMedium)}
+
+@Composable
+private fun HomeScreen(p: PresentationData, answered: Int, result: ScalyResult?, error: String?,
+                       onFindings: () -> Unit, onCalculate: () -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(p.group.uppercase(Locale.US), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        Text(p.label, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(p.question, style = MaterialTheme.typography.titleMedium)
+        if (p.lead.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+            Text(p.lead, Modifier.padding(14.dp))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Metric("DIAGNOSES", p.diagnoses.size.toString(), Modifier.weight(1f))
+            Metric("FINDINGS", p.findings.size.toString(), Modifier.weight(1f))
+            Metric("TESTS", p.tests.size.toString(), Modifier.weight(1f))
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Safety and escalation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(p.safetyFlag)
+                p.stopRules.take(3).forEach { rule ->
+                    Text("• " + rule.label, fontWeight = FontWeight.SemiBold)
+                    Text(rule.action, style = MaterialTheme.typography.bodySmall)
+                }
+                if (p.stopRules.size > 3) Text(p.stopRules.size.toString() + " escalation rules available in Reference.")
+                Text("Reference warnings only; automated triage is not implemented.", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Card {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Assessment progress", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(answered.toString() + " of " + p.findings.size + " findings answered", style = MaterialTheme.typography.headlineSmall)
+                LinearProgressIndicator(progress = { if (p.findings.isEmpty()) 0f else answered.toFloat() / p.findings.size },
+                    modifier = Modifier.fillMaxWidth().height(8.dp))
+                Button(onClick = onFindings, modifier = Modifier.fillMaxWidth()) { Text("Open clinical findings") }
+                if (p.id == "scaly") OutlinedButton(onClick = onCalculate, enabled = answered > 0, modifier = Modifier.fillMaxWidth()) {
+                    Text("Calculate differential")
+                } else Text("A verified scoring model is not yet available for this presentation.")
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        }
+        if (result != null) {
+            Text("Latest provisional leaders", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            result.ranked.take(3).forEachIndexed { i, dx -> ProbabilityBar((i + 1).toString() + ". " + dx.name, dx.probability) }
+        }
+        Text("How the workflow works", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Workflow("01", "Characterise", "Record positive and negative morphological findings.")
+        Workflow("02", "Discriminate", "Review the ranked differential and evidence for each diagnosis.")
+        Workflow("03", "Confirm", "Choose investigations that distinguish the leading diagnoses.")
+        Text("Development prototype · Not validated for clinical decisions", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+        Spacer(Modifier.height(10.dp))
+    }
 }
-private fun fmt(v:Double)=String.format(Locale.US,"%.2f",v)
+
+@Composable
+private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean>, search: String,
+                           onSearch: (String) -> Unit, onChange: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Text("Clinical findings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(answers.size.toString() + " answered · " + (p.findings.size - answers.size) + " unanswered")
+        OutlinedTextField(value = search, onValueChange = onSearch, label = { Text("Search findings") },
+            modifier = Modifier.fillMaxWidth(), singleLine = true)
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(p.findings.filter { search.isBlank() || it.label.contains(search, true) }, key = { it.index }) { f ->
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text((f.index + 1).toString() + ". " + f.label, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            FilterChip(selected = answers[f.index] == true, onClick = { answers[f.index] = true; onChange() }, label = { Text("Present") })
+                            FilterChip(selected = answers[f.index] == false, onClick = { answers[f.index] = false; onChange() }, label = { Text("Absent") })
+                            if (f.index in answers) TextButton(onClick = { answers.remove(f.index); onChange() }) { Text("Clear") }
+                        }
+                        Row {
+                            Text("Group: " + f.group, style = MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.weight(1f))
+                            Text("Grade " + f.grade, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        if (f.likelihoods.isNotEmpty()) {
+                            var expanded by remember(f.index) { mutableStateOf(false) }
+                            TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
+                                Text(if (expanded) "Hide likelihood ratios" else "Show likelihood ratios")
+                            }
+                            if (expanded) {
+                                Text(f.likelihoods.entries.joinToString(" · ") { it.key + ": " + fmt(it.value.first) + " / " + fmt(it.value.second) },
+                                    style = MaterialTheme.typography.bodySmall)
+                                Text(f.source, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, selected: String?, onSelect: (String?) -> Unit,
+                               answered: Int, error: String?, onCalculate: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Text("Differential diagnosis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Ranked shortlist and visual comparison", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (p.id != "scaly") {
+            EmptyCard("Scoring not enabled", "This presentation's knowledge data is present, but a validated scoring model and parity test vectors are still needed.")
+        } else if (result == null) {
+            EmptyCard("No result calculated", "Complete the findings assessment and calculate the provisional ranking.")
+            Button(onClick = onCalculate, enabled = answered > 0, modifier = Modifier.fillMaxWidth()) { Text("Calculate ranking") }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Metric("ANSWERED", result.answeredCount.toString(), Modifier.weight(1f))
+                Metric("COUNTED", result.scoredCount.toString(), Modifier.weight(1f))
+                Metric("RESIDUAL", fmt(result.residual * 100) + "%", Modifier.weight(1f))
+            }
+            Text("Relative ranking chart", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Bars show the reconstructed model's normalised weights, not validated clinical probabilities.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+                items(result.ranked, key = { it.id }) { dx ->
+                    Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == dx.id) null else dx.id) }) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(dx.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                                Text(fmt(dx.probability * 100) + "%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
+                            ProbabilityBar("", dx.probability)
+                            Text("Weight " + fmt(dx.weight) + " · Base " + fmt(dx.base), style = MaterialTheme.typography.labelSmall)
+                            if (selected == dx.id) {
+                                val d = p.diagnoses.firstOrNull { it.id == dx.id }
+                                if (d != null) DiagnosisDetails(d)
+                            }
+                        }
+                    }
+                }
+                if (result.dropped.isNotEmpty()) item {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("Correlated findings not double-counted", fontWeight = FontWeight.Bold)
+                            result.dropped.forEach { Text("• " + it.label + " (" + if (it.answer) "present)" else "absent)") }
+                        }
+                    }
+                }
+                item { OutlinedButton(onClick = onCalculate, modifier = Modifier.fillMaxWidth()) { Text("Recalculate") } }
+                item { Text("The current scaly scorer is provisional and has not been shown equivalent to the live website.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestsScreen(p: PresentationData, selected: Int?, onSelect: (Int?) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Text("Investigations and confirmation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(p.tests.size.toString() + " source tests · tap a test for interpretation")
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(p.tests, key = { it.index }) { t ->
+                Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == t.index) null else t.index) }) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(t.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Target: " + t.target)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (t.sensitivity != null) Metric("SENSITIVITY", fmt(t.sensitivity) + "%", Modifier.weight(1f))
+                            if (t.specificity != null) Metric("SPECIFICITY", fmt(t.specificity) + "%", Modifier.weight(1f))
+                        }
+                        Text("Evidence " + t.grade + " · " + t.source, style = MaterialTheme.typography.labelSmall)
+                        if (selected == t.index) {
+                            Detail("When to use", t.whenToUse); Detail("Positive result", t.positive)
+                            Detail("Negative result", t.negative); Detail("Limitations / sampling", t.caveat)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReferenceScreen(p: PresentationData, selected: String?, onSelect: (String?) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Text("Clinical reference library", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(p.diagnoses.size.toString() + " diagnosis profiles · " + p.contexts.size + " context modifiers · " + p.stopRules.size + " stop rules")
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(p.diagnoses, key = { it.id }) { d ->
+                Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == d.id) null else d.id) }) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(d.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Evidence " + d.grade + " · " + d.source, style = MaterialTheme.typography.labelSmall)
+                        if (selected == d.id) DiagnosisDetails(d)
+                    }
+                }
+            }
+            if (p.contexts.isNotEmpty()) item { Text("Patient context modifiers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+            items(p.contexts, key = { "context-" + it.index }) { c ->
+                Card {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(c.label, fontWeight = FontWeight.SemiBold)
+                        c.ageRange?.let { Text("Age range: " + it.first + "–" + it.second) }
+                        Text(c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
+                        Text("Grade " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
+                        Text("Reference only; these modifiers are not applied to the ranking.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiagnosisDetails(d: PresentationDiagnosis) {
+    Detail("Typical presentation", d.look)
+    Detail("Features supporting diagnosis", d.supporting.joinToString("\n• ", "• "))
+    Detail("Features arguing against", d.opposing.joinToString("\n• ", "• "))
+    Detail("Clinical confirmation", d.clinicalFeatures)
+    Detail("Dermoscopy", d.dermoscopy)
+    Detail("Histopathology", d.histopathology)
+    Detail("Associations", d.associations)
+    Detail("Management reference", d.management)
+    Detail("Typical sites", d.locations.joinToString(", "))
+    Detail("Distribution", d.pattern)
+}
+
+@Composable
+private fun Detail(title: String, body: String) {
+    if (body.isNotBlank()) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        Text(body, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ProbabilityBar(label: String, value: Double) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (label.isNotBlank()) Text(label, style = MaterialTheme.typography.bodyMedium)
+        LinearProgressIndicator(progress = { value.coerceIn(0.0, 1.0).toFloat() },
+            modifier = Modifier.fillMaxWidth().height(9.dp), strokeCap = androidx.compose.ui.graphics.StrokeCap.Round)
+    }
+}
+
+@Composable
+private fun Workflow(number: String, title: String, body: String) {
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+            Text(number, Modifier.padding(10.dp), fontWeight = FontWeight.Bold)
+        }
+        Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold); Text(body, style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun EmptyCard(title: String, body: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(body)
+        }
+    }
+}
+
+private fun fmt(v: Double) = String.format(Locale.US, "%.2f", v)
