@@ -232,6 +232,30 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                             ProbabilityBar("", dx.probability)
                             Text("Weight " + fmt(dx.weight) + " · Base " + fmt(dx.base), style = MaterialTheme.typography.labelSmall)
                             if (selected == dx.id) {
+                                Text("Why this diagnosis has this model weight", fontWeight = FontWeight.Bold)
+                                Text("Starting weight: " + fmt(dx.base), style = MaterialTheme.typography.bodySmall)
+                                if (dx.contributions.isEmpty()) {
+                                    Text("No retained answered finding has a factor for this diagnosis; its weight remains at baseline.",
+                                        style = MaterialTheme.typography.bodySmall)
+                                } else {
+                                    dx.contributions.forEach { contribution ->
+                                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                            Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                Text((if (contribution.answer) "Present · " else "Absent · ") + contribution.findingLabel,
+                                                    fontWeight = FontWeight.Medium)
+                                                Text("Source factor ×" + fmt(contribution.sourceMultiplier) +
+                                                    " → applied ×" + fmt(contribution.appliedMultiplier),
+                                                    style = MaterialTheme.typography.bodySmall)
+                                                Text("Weight " + fmt(contribution.weightBefore) + " → " +
+                                                    fmt(contribution.weightAfter),
+                                                    style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
+                                }
+                                Text("Final model weight: " + fmt(dx.weight) +
+                                    " · Normalised displayed share: " + fmt(dx.probability * 100) + "%",
+                                    fontWeight = FontWeight.SemiBold)
                                 val d = p.diagnoses.firstOrNull { it.id == dx.id }
                                 if (d != null) DiagnosisDetails(d)
                             }
