@@ -34,7 +34,6 @@ data class ScalyResult(
     val dropped: List<DroppedFinding>
 )
 
-
 /**
  * Correlation handling ported from the Python reference scorer.
  * Only the seven explicitly mapped groups are reduced; all other findings remain.
@@ -108,13 +107,16 @@ class OfflineScalyEngine private constructor(private val presentation: JSONObjec
     }
     val safetyFlag: String = presentation.optString("flag", "")
 
-    fun score(answers: Map<Int, Boolean>, presentationId: String = presentation.optString("id", "scaly")): ScalyResult {
-        val activePresentation = if (presentationId == presentation.optString("id")) presentation else {
+    fun score(answers: Map<Int, Boolean>, presentationId: String = presentation.optString("id", "fixture")): ScalyResult {
+        val loadedId = presentation.optString("id", "fixture")
+        val activePresentation = if (presentationId == loadedId) presentation else {
             requireNotNull(assets) { "A presentation asset source is required." }
             assets.open("knowledge/presentation_${presentationId}.json")
                 .bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
         }
-        require(activePresentation.optString("id") == presentationId) { "Presentation asset ID mismatch." }
+        require(activePresentation.optString("id", presentationId) == presentationId) {
+            "Presentation asset ID mismatch."
+        }
         val activeFindings = jsonArray(activePresentation, "find")
         require(answers.keys.all { it in activeFindings.indices }) { "Unknown finding index." }
 
