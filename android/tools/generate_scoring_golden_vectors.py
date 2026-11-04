@@ -28,7 +28,6 @@ def make_cases(count, presentation_id):
         add(f"single_{index}_yes", {index: "y"})
         add(f"single_{index}_no", {index: "n"})
 
-    # Correlation groups are experimentally mapped for scaly only.
     if presentation_id == "scaly":
         groups = [(0, 1), (10, 11), (19, 20), (16, 25), (13, 29), (17, 18)]
         for group_index, (a, b) in enumerate(groups, 1):
@@ -54,6 +53,7 @@ def make_cases(count, presentation_id):
 
 
 def main():
+    TEST_RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
     all_vectors = {}
     total_cases = 0
     for presentation_id in PRESENTATION_IDS:
@@ -82,15 +82,11 @@ def main():
                     } for row in result["ranked"]],
                 },
             })
-        all_vectors[presentation_id] = {
-            "case_count": len(vectors),
-            "cases": vectors,
-        }
+        all_vectors[presentation_id] = {"case_count": len(vectors), "cases": vectors}
         destination = TEST_RESOURCE_DIR / f"presentation_{presentation_id}.json"
         destination.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
         total_cases += len(vectors)
 
-    TEST_RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps({
         "generator": "scoring.py::score_findings",
         "seed": SEED,
