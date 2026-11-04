@@ -222,13 +222,35 @@ private fun HomeScreen(
 @Composable
 private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean>, search: String,
                            onSearch: (String) -> Unit, onChange: () -> Unit) {
+    var groupMenu by remember(p.id) { mutableStateOf(false) }
+    var selectedGroup by remember(p.id) { mutableStateOf("All groups") }
+    val groups = remember(p.id) { listOf("All groups") + p.findings.map { it.group }.filter { it.isNotBlank() }.distinct().sorted() }
+    val visibleFindings = p.findings.filter {
+        (selectedGroup == "All groups" || it.group == selectedGroup) &&
+            (search.isBlank() || it.label.contains(search, true) || it.group.contains(search, true))
+    }
+    val visibleAnswered = visibleFindings.count { it.index in answers }
     Column(Modifier.fillMaxSize()) {
         Text("Clinical findings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(answers.size.toString() + " answered · " + (p.findings.size - answers.size) + " unanswered")
-        OutlinedTextField(value = search, onValueChange = onSearch, label = { Text("Search findings") },
+        Text(answers.size.toString() + " of " + p.findings.size + " answered overall · " +
+            visibleAnswered + " of " + visibleFindings.size + " in this view")
+        OutlinedTextField(value = search, onValueChange = onSearch, label = { Text("Search findings or groups") },
             modifier = Modifier.fillMaxWidth(), singleLine = true)
+        ExposedDropdownMenuBox(expanded = groupMenu, onExpandedChange = { groupMenu = !groupMenu }) {
+            OutlinedTextField(value = selectedGroup, onValueChange = {}, readOnly = true,
+                label = { Text("Finding group") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(groupMenu) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(), shape = RoundedCornerShape(14.dp))
+            ExposedDropdownMenu(expanded = groupMenu, onDismissRequest = { groupMenu = false }) {
+                groups.forEach { group ->
+                    val count = if (group == "All groups") p.findings.size else p.findings.count { it.group == group }
+                    DropdownMenuItem(text = { Text("$group ($count)") },
+                        onClick = { selectedGroup = group; groupMenu = false })
+                }
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(p.findings.filter { search.isBlank() || it.label.contains(search, true) }, key = { it.index }) { f ->
+            items(visibleFindings, key = { it.index }) { f ->
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text((f.index + 1).toString() + ". " + f.label, fontWeight = FontWeight.Medium)
@@ -242,6 +264,8 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
                             Spacer(Modifier.weight(1f))
                             Text("Grade " + f.grade, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         }
+                        Text("Evidence " + f.grade + " · " + f.source,
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (f.likelihoods.isNotEmpty()) {
                             var expanded by remember(f.index) { mutableStateOf(false) }
                             TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
