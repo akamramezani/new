@@ -425,7 +425,7 @@ private fun ReferenceScreen(
             items(p.contexts, key = { "context-" + it.index }) { c ->
                 Card {
                     Row(
-                        Modifier.fillMaxWidth().clickable { onContextToggle(c.index) }.padding(12.dp),
+                        Modifier.fillMaxWidth().padding(12.dp),
                         verticalAlignment = Alignment.Top,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
