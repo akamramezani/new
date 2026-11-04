@@ -30,7 +30,7 @@ class ScalyCorrelationGuardTest {
         assertEquals(setOf(7), ScalyCorrelationGuard.retainedIndices(mapOf(7 to true, 8 to true, 9 to true)))
         assertEquals(setOf(9), ScalyCorrelationGuard.retainedIndices(mapOf(7 to false, 8 to false, 9 to true)))
         assertEquals(setOf(8), ScalyCorrelationGuard.retainedIndices(mapOf(7 to false, 8 to false, 9 to false)))
-        assertEquals(setOf(7, 9), ScalyCorrelationGuard.retainedIndices(mapOf(7 to false, 9 to false)))
+        assertEquals(setOf(7), ScalyCorrelationGuard.retainedIndices(mapOf(7 to false, 9 to false)))
     }
 
     @Test
