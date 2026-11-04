@@ -12,20 +12,28 @@ data class PresentationTest(val index:Int,val label:String,val target:String,val
 data class PresentationContext(val index:Int,val label:String,val ageRange:Pair<Int,Int>?,val sex:String?,val multipliers:Map<String,Double>,val grade:String,val source:String)
 data class PresentationData(val id:String,val group:String,val label:String,val question:String,val lead:String,val safetyFlag:String,val stopRules:List<PresentationStopRule>,val findings:List<PresentationFinding>,val diagnoses:List<PresentationDiagnosis>,val tests:List<PresentationTest>,val contexts:List<PresentationContext>)
 
+internal fun loadVerifiedKnowledgeJson(assets:AssetManager,id:String):JSONObject {
+ val manifest=assets.open("knowledge/knowledge_manifest.json").bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+ val presentations=manifest.getJSONObject("presentations")
+ require(presentations.has(id)) { "Unknown presentation: $id" }
+ val meta=presentations.getJSONObject(id)
+ val bytes=assets.open("knowledge/${meta.getString("file")}").use { it.readBytes() }
+ val expectedHash=meta.optString("sha256")
+ require(expectedHash.matches(Regex("[0-9a-fA-F]{64}"))) { "Missing or invalid manifest checksum for $id" }
+ val actualHash=MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+ require(actualHash.equals(expectedHash,ignoreCase=true)) { "Knowledge asset checksum mismatch for $id" }
+ val json=JSONObject(bytes.toString(Charsets.UTF_8))
+ require(json.optString("id")==id) { "Presentation ID mismatch for $id" }
+ return json
+}
+
 class PresentationCatalog(private val assets:AssetManager) {
  private val manifest:JSONObject by lazy { assets.open("knowledge/knowledge_manifest.json").bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) } }
  val presentationIds:List<String> get()=manifest.getJSONObject("presentations").keys().asSequence().toList()
  fun load(id:String):PresentationData {
   require(id in presentationIds) { "Unknown presentation: $id" }
   val meta=manifest.getJSONObject("presentations").getJSONObject(id)
-  val bytes=assets.open("knowledge/${meta.getString("file")}").use { it.readBytes() }
-  val expectedHash=meta.optString("sha256")
-  require(expectedHash.matches(Regex("[0-9a-fA-F]{64}"))) { "Missing or invalid manifest checksum for $id" }
-  val actualHash=MessageDigest.getInstance("SHA-256").digest(bytes)
-   .joinToString("") { "%02x".format(it) }
-  require(actualHash.equals(expectedHash,ignoreCase=true)) { "Knowledge asset checksum mismatch for $id" }
-  val j=JSONObject(bytes.toString(Charsets.UTF_8))
-  require(j.optString("id")==id) { "Presentation ID mismatch for $id" }
+  val j=loadVerifiedKnowledgeJson(assets,id)
   val findings=objects(j,"find").mapIndexed { i,o ->
    val factors=linkedMapOf<String,Pair<Double,Double>>(); val f=o.optJSONObject("f")
    if(f!=null) f.keys().forEach { k -> val a=f.optJSONArray(k); if(a!=null&&a.length()>=2) factors[k]=a.optDouble(0) to a.optDouble(1) }
