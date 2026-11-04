@@ -33,6 +33,9 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Validate offline dermatology knowledge
+        run: python3 tools/validate_derm_knowledge.py
+
       - name: Build debug APK
         run: gradle -p android assembleDebug
 
