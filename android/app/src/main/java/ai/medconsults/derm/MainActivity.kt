@@ -49,6 +49,7 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
     var scoreError by remember(selectedId) { mutableStateOf<String?>(null) }
     var selectedDx by remember(selectedId) { mutableStateOf<String?>(null) }
     var selectedTest by remember(selectedId) { mutableStateOf<Int?>(null) }
+    var selectedContexts by remember(selectedId) { mutableStateOf<Set<Int>>(emptySet()) }
     var search by remember(selectedId) { mutableStateOf("") }
     LaunchedEffect(selectedId) {
         try { data = catalog.load(selectedId); error = null }
@@ -96,11 +97,18 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                     Screen.FINDINGS -> FindingsScreen(p, answers, search, { search = it }) { result = null; scoreError = null }
                     Screen.DIFFERENTIAL -> DifferentialScreen(p, result, selectedDx, { selectedDx = it },
                         answers.size, scoreError, {
-                            try { result = engine.score(answers.toMap()); scoreError = null }
+                            try { result = engine.score(answers.toMap(), p.id); scoreError = null }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
                         })
                     Screen.TESTS -> TestsScreen(p, selectedTest, result?.ranked?.take(3)?.map { it.id }.orEmpty()) { selectedTest = it }
-                    Screen.REFERENCE -> ReferenceScreen(p, selectedDx) { selectedDx = it }
+                    Screen.REFERENCE -> ReferenceScreen(
+                        p, selectedDx, selectedContexts,
+                        onDiagnosisSelect = { selectedDx = it },
+                        onContextToggle = { index ->
+                            selectedContexts = if (index in selectedContexts) selectedContexts - index
+                            else selectedContexts + index
+                        }
+                    )
                 }
             }
         }
@@ -383,13 +391,29 @@ private fun TestInterpretationSection(title: String, body: String) {
 }
 
 @Composable
-private fun ReferenceScreen(p: PresentationData, selected: String?, onSelect: (String?) -> Unit) {
+private fun ReferenceScreen(
+    p: PresentationData,
+    selected: String?,
+    selectedContexts: Set<Int>,
+    onDiagnosisSelect: (String?) -> Unit,
+    onContextToggle: (Int) -> Unit
+) {
     Column(Modifier.fillMaxSize()) {
         Text("Clinical reference library", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(p.diagnoses.size.toString() + " diagnosis profiles · " + p.contexts.size + " context modifiers · " + p.stopRules.size + " stop rules")
+        if (p.contexts.isNotEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Patient context review", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${selectedContexts.size} of ${p.contexts.size} context items selected")
+                    Text("Select relevant history for review. These selections are recorded only in this screen and do not alter the provisional differential or trigger automated triage.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(p.diagnoses, key = { it.id }) { d ->
-                Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == d.id) null else d.id) }) {
+                Card(Modifier.fillMaxWidth().clickable { onDiagnosisSelect(if (selected == d.id) null else d.id) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(d.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text("Evidence " + d.grade + " · " + d.source, style = MaterialTheme.typography.labelSmall)
@@ -400,12 +424,25 @@ private fun ReferenceScreen(p: PresentationData, selected: String?, onSelect: (S
             if (p.contexts.isNotEmpty()) item { Text("Patient context modifiers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             items(p.contexts, key = { "context-" + it.index }) { c ->
                 Card {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(c.label, fontWeight = FontWeight.SemiBold)
-                        c.ageRange?.let { Text("Age range: " + it.first + "–" + it.second) }
-                        Text(c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
-                        Text("Grade " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
-                        Text("Reference only; these modifiers are not applied to the ranking.", style = MaterialTheme.typography.labelSmall)
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onContextToggle(c.index) }.padding(12.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Checkbox(
+                            checked = c.index in selectedContexts,
+                            onCheckedChange = { onContextToggle(c.index) }
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(c.label, fontWeight = FontWeight.SemiBold)
+                            c.ageRange?.let { Text("Source age range: " + it.first + "–" + it.second) }
+                            Text("Source diagnosis keys: " + c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
+                            Text("Evidence " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
+                            if (c.index in selectedContexts) {
+                                Text("Selected for context review · not applied to scoring",
+                                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                 }
             }
