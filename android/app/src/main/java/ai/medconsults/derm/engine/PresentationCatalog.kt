@@ -8,7 +8,7 @@ data class PresentationDiagnosis(val id:String,val name:String,val baseWeight:Do
 data class PresentationStopRule(val label:String,val action:String)
 data class PresentationFinding(val index:Int,val label:String,val group:String,val likelihoods:Map<String,Pair<Double,Double>>,val grade:String,val source:String)
 data class PresentationTest(val index:Int,val label:String,val target:String,val sensitivity:Double?,val specificity:Double?,val grade:String,val source:String,val whenToUse:String,val positive:String,val negative:String,val caveat:String)
-data class PresentationContext(val index:Int,val label:String,val ageRange:Pair<Int,Int>?,val multipliers:Map<String,Double>,val grade:String,val source:String)
+data class PresentationContext(val index:Int,val label:String,val ageRange:Pair<Int,Int>?,val sex:String?,val multipliers:Map<String,Double>,val grade:String,val source:String)
 data class PresentationData(val id:String,val group:String,val label:String,val question:String,val lead:String,val safetyFlag:String,val stopRules:List<PresentationStopRule>,val findings:List<PresentationFinding>,val diagnoses:List<PresentationDiagnosis>,val tests:List<PresentationTest>,val contexts:List<PresentationContext>)
 
 class PresentationCatalog(private val assets:AssetManager) {
@@ -31,7 +31,7 @@ class PresentationCatalog(private val assets:AssetManager) {
   val contexts=objects(j,"ctx").mapIndexed { i,o ->
    val a=o.optJSONArray("age"); val m=linkedMapOf<String,Double>(); val mo=o.optJSONObject("m")
    if(mo!=null) mo.keys().forEach { k -> m[k]=mo.optDouble(k) }
-   PresentationContext(i,o.optString("l"),if(a!=null&&a.length()>=2)a.optInt(0) to a.optInt(1) else null,m,o.optString("c"),o.optString("s"))
+   PresentationContext(i,o.optString("l"),if(a!=null&&a.length()>=2)a.optInt(0) to a.optInt(1) else null,o.optString("sex").takeIf { it.isNotBlank() },m,o.optString("c"),o.optString("s"))
   }
   val stops=objects(j,"stop").map { PresentationStopRule(it.optString("l"),it.optString("a")) }
   return PresentationData(id,j.optString("grp"),j.optString("label",id),j.optString("q"),j.optString("lead"),j.optString("flag"),stops,findings,diagnoses,tests,contexts)
