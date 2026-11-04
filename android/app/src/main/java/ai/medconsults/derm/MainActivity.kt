@@ -426,6 +426,7 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
 private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, selected: String?, onSelect: (String?) -> Unit,
                                answered: Int, error: String?, onCalculate: () -> Unit) {
     var compareTop by remember(result) { mutableStateOf(false) }
+    var selectedForComparison by remember(p.id) { mutableStateOf<Set<String>>(emptySet()) }
     var diagnosisSearch by remember(p.id) { mutableStateOf("") }
     var topFiveOnly by remember(p.id) { mutableStateOf(false) }
     val searchedRanked = result?.ranked?.filter { it.name.contains(diagnosisSearch, ignoreCase = true) }.orEmpty()
@@ -457,7 +458,21 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                 Text("${visibleRanked.size} of ${result.ranked.size} diagnoses shown",
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${selectedForComparison.size}/3 selected to compare",
+                    Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                TextButton(onClick = { selectedForComparison = emptySet() },
+                    enabled = selectedForComparison.isNotEmpty()) { Text("Clear") }
+                TextButton(onClick = { compareTop = false },
+                    enabled = selectedForComparison.size >= 2) { Text("Compare selected") }
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+                if (selectedForComparison.size >= 2) item(key = "selected-diagnosis-comparison") {
+                    val selectedProfiles = result.ranked
+                        .filter { it.id in selectedForComparison }
+                        .mapNotNull { ranked -> p.diagnoses.firstOrNull { it.id == ranked.id } }
+                    DiagnosisComparison(selectedProfiles)
+                }
                 if (compareTop) item(key = "diagnosis-comparison") {
                     DiagnosisComparison(result.ranked.take(3).mapNotNull { ranked -> p.diagnoses.firstOrNull { it.id == ranked.id } })
                 }
@@ -467,6 +482,24 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(dx.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                                 Text(fmt(dx.probability * 100) + "%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(
+                                    selected = dx.id in selectedForComparison,
+                                    onClick = {
+                                        selectedForComparison = if (dx.id in selectedForComparison) {
+                                            selectedForComparison - dx.id
+                                        } else if (selectedForComparison.size < 3) {
+                                            selectedForComparison + dx.id
+                                        } else selectedForComparison
+                                    },
+                                    label = { Text(if (dx.id in selectedForComparison) "Selected to compare" else "Add to comparison") },
+                                    enabled = dx.id in selectedForComparison || selectedForComparison.size < 3
+                                )
+                                if (selectedForComparison.size == 3 && dx.id !in selectedForComparison) {
+                                    Text("Clear one to add another", style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                             Text("After entered findings", style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
