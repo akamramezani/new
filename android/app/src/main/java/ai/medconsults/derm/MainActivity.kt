@@ -425,14 +425,27 @@ private fun TestsScreen(p: PresentationData, selected: Int?, leadingDiagnosisIds
         listOf(allTargets) + p.tests.map { it.target }.filter { it.isNotBlank() }.distinct().sorted()
     }
     var selectedTarget by remember(p.id) { mutableStateOf(allTargets) }
-    val visibleTests = when (selectedTarget) {
+    var testSearch by remember(p.id) { mutableStateOf("") }
+    val targetFilteredTests = when (selectedTarget) {
         allTargets -> p.tests
         leadingFilter -> p.tests.filter { it.target in leadingTargets }
         else -> p.tests.filter { it.target == selectedTarget }
     }
+    val visibleTests = targetFilteredTests.filter { test ->
+        testSearch.isBlank() || listOf(test.label, test.target, test.whenToUse,
+            test.positive, test.negative, test.caveat, test.source)
+            .any { it.contains(testSearch, ignoreCase = true) }
+    }
     Column(Modifier.fillMaxSize()) {
         Text("Investigations and confirmation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(visibleTests.size.toString() + " of " + p.tests.size + " source tests · tap a test for interpretation")
+        OutlinedTextField(
+            value = testSearch,
+            onValueChange = { testSearch = it },
+            label = { Text("Search tests and interpretation") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
         ExposedDropdownMenuBox(expanded = targetMenu, onExpandedChange = { targetMenu = !targetMenu }) {
             OutlinedTextField(
                 value = selectedTarget,
