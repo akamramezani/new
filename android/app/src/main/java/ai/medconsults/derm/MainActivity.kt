@@ -318,7 +318,7 @@ private fun HomeScreen(
             AlertDialog(
                 onDismissRequest = { showResetConfirmation = false },
                 title = { Text("Reset this assessment?") },
-                text = { Text("This clears entered findings, patient context, selected investigation, and the provisional result for this presentation. This cannot be undone.") },
+                text = { Text("This clears entered findings, patient context, the investigation shortlist, and the provisional result for this presentation. This cannot be undone.") },
                 confirmButton = {
                     TextButton(onClick = {
                         onReset()
@@ -584,6 +584,7 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
     }
     var selectedTarget by remember(p.id) { mutableStateOf(allTargets) }
     var testSearch by remember(p.id) { mutableStateOf("") }
+    var expandedTest by remember(p.id) { mutableStateOf<Int?>(null) }
     val targetFilteredTests = when (selectedTarget) {
         allTargets -> p.tests
         leadingFilter -> p.tests.filter { it.target in leadingTargets }
@@ -639,7 +640,9 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(visibleTests, key = { it.index }) { t ->
-                Card(Modifier.fillMaxWidth().clickable { onSelect(t.index) }) {
+                Card(Modifier.fillMaxWidth().clickable {
+                    expandedTest = if (expandedTest == t.index) null else t.index
+                }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(t.label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -662,7 +665,7 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
                             Text("Added to the review shortlist", style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         }
-                        if (t.index == selected.lastOrNull()) {
+                        if (expandedTest == t.index) {
                             HorizontalDivider()
                             Text("TEST INTERPRETATION", style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
