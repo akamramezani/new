@@ -524,9 +524,33 @@ private fun ReferenceScreen(
     onPatientSexChange: (String) -> Unit,
     onContextToggle: (Int) -> Unit
 ) {
+    var referenceSearch by remember(p.id) { mutableStateOf("") }
+    val visibleDiagnoses = p.diagnoses.filter { d ->
+        referenceSearch.isBlank() || listOf(
+            d.name, d.look, d.clinicalFeatures, d.dermoscopy, d.histopathology,
+            d.associations, d.management, d.pattern, d.source, d.grade
+        ).any { it.contains(referenceSearch, ignoreCase = true) } ||
+            d.supporting.any { it.contains(referenceSearch, ignoreCase = true) } ||
+            d.opposing.any { it.contains(referenceSearch, ignoreCase = true) } ||
+            d.locations.any { it.contains(referenceSearch, ignoreCase = true) }
+    }
+    val visibleContexts = p.contexts.filter { c ->
+        referenceSearch.isBlank() || c.label.contains(referenceSearch, ignoreCase = true) ||
+            c.source.contains(referenceSearch, ignoreCase = true) ||
+            c.grade.contains(referenceSearch, ignoreCase = true) ||
+            c.multipliers.keys.any { it.contains(referenceSearch, ignoreCase = true) }
+    }
     Column(Modifier.fillMaxSize()) {
         Text("Clinical reference library", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(p.diagnoses.size.toString() + " diagnosis profiles · " + p.contexts.size + " context modifiers · " + p.stopRules.size + " stop rules")
+        Text(visibleDiagnoses.size.toString() + " of " + p.diagnoses.size + " diagnosis profiles · " +
+            visibleContexts.size + " of " + p.contexts.size + " context modifiers · " + p.stopRules.size + " stop rules")
+        OutlinedTextField(
+            value = referenceSearch,
+            onValueChange = { referenceSearch = it },
+            label = { Text("Search diagnoses, features, management, or context") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
         if (p.contexts.isNotEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -551,7 +575,7 @@ private fun ReferenceScreen(
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(p.diagnoses, key = { it.id }) { d ->
+            items(visibleDiagnoses, key = { it.id }) { d ->
                 Card(Modifier.fillMaxWidth().clickable { onDiagnosisSelect(if (selected == d.id) null else d.id) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(d.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -561,7 +585,7 @@ private fun ReferenceScreen(
                 }
             }
             if (p.contexts.isNotEmpty()) item { Text("Patient context modifiers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-            items(p.contexts, key = { "context-" + it.index }) { c ->
+            items(visibleContexts, key = { "context-" + it.index }) { c ->
                 Card {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
