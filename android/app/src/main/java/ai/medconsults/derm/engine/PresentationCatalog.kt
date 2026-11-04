@@ -34,6 +34,7 @@ class PresentationCatalog(private val assets:AssetManager) {
   require(id in presentationIds) { "Unknown presentation: $id" }
   val meta=manifest.getJSONObject("presentations").getJSONObject(id)
   val j=loadVerifiedKnowledgeJson(assets,id)
+  validateKnowledgeStructure(j,id)
   val findings=objects(j,"find").mapIndexed { i,o ->
    val factors=linkedMapOf<String,Pair<Double,Double>>(); val f=o.optJSONObject("f")
    if(f!=null) f.keys().forEach { k -> val a=f.optJSONArray(k); if(a!=null&&a.length()>=2) factors[k]=a.optDouble(0) to a.optDouble(1) }
@@ -58,6 +59,65 @@ class PresentationCatalog(private val assets:AssetManager) {
    "Knowledge asset contains an unlabeled entry in $id"
   }
   return PresentationData(id,j.optString("grp"),j.optString("label",id),j.optString("q"),j.optString("lead"),j.optString("flag"),stops,findings,diagnoses,tests,contexts)
+ }
+ private fun validateKnowledgeStructure(j:JSONObject,id:String) {
+  val diagnosisIds=objects(j,"dx").map { it.optString("id") }
+  require(diagnosisIds.all { it.isNotBlank() } && diagnosisIds.distinct().size==diagnosisIds.size) {
+   "Missing or duplicate diagnosis IDs in $id"
+  }
+  val known=diagnosisIds.toSet()
+  objects(j,"dx").forEachIndexed { i,o ->
+   if(o.has("base")&&!o.isNull("base")) {
+    val base=o.optDouble("base",Double.NaN)
+    require(base.isFinite()&&base>0.0) { "Invalid base weight in $id diagnosis $i" }
+   }
+  }
+  objects(j,"find").forEachIndexed { i,o ->
+   require(o.optString("l").isNotBlank()) { "Unlabeled finding in $id at $i" }
+   val factors=o.optJSONObject("f")?:JSONObject()
+   factors.keys().forEach { diagnosisId ->
+    require(diagnosisId in known) { "Unknown diagnosis $diagnosisId in $id finding $i" }
+    val pair=factors.optJSONArray(diagnosisId)
+    require(pair!=null&&pair.length()==2) { "Invalid likelihood pair in $id finding $i for $diagnosisId" }
+    val positive=pair!!.optDouble(0,Double.NaN)
+    val negative=pair.optDouble(1,Double.NaN)
+    require(positive.isFinite()&&positive>0.0&&negative.isFinite()&&negative>0.0) {
+     "Non-positive or non-finite likelihood ratio in $id finding $i for $diagnosisId"
+    }
+   }
+  }
+  objects(j,"test").forEachIndexed { i,o ->
+   require(o.optString("l").isNotBlank()) { "Unlabeled test in $id at $i" }
+   listOf("se","sp").forEach { key ->
+    if(o.has(key)&&!o.isNull(key)) {
+     val value=o.optDouble(key,Double.NaN)
+     require(value.isFinite()&&value in 0.0..100.0) { "Invalid $key value in $id test $i" }
+    }
+   }
+  }
+  objects(j,"ctx").forEachIndexed { i,o ->
+   require(o.optString("l").isNotBlank()) { "Unlabeled context modifier in $id at $i" }
+   val age=o.optJSONArray("age")
+   if(age!=null) {
+    require(age.length()==2) { "Invalid age range in $id context $i" }
+    val minimum=age.optInt(0,-1)
+    val maximum=age.optInt(1,-1)
+    require(minimum in 0..120&&maximum in minimum..120) { "Invalid age range in $id context $i" }
+   }
+   val sex=o.optString("sex")
+   require(sex.isBlank()||sex=="f"||sex=="m") { "Invalid sex code in $id context $i" }
+   val multipliers=o.optJSONObject("m")?:JSONObject()
+   multipliers.keys().forEach { diagnosisId ->
+    require(diagnosisId in known) { "Unknown diagnosis $diagnosisId in $id context $i" }
+    val multiplier=multipliers.optDouble(diagnosisId,Double.NaN)
+    require(multiplier.isFinite()&&multiplier>0.0) { "Invalid context multiplier in $id context $i for $diagnosisId" }
+   }
+  }
+  objects(j,"stop").forEachIndexed { i,o ->
+   require(o.optString("l").isNotBlank()&&o.optString("a").isNotBlank()) {
+    "Unlabeled safety rule in $id at $i"
+   }
+  }
  }
  private fun validateManifestCounts(
   id:String,meta:JSONObject,findings:Int,diagnoses:Int,tests:Int,contexts:Int,stops:Int
