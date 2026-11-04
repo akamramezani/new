@@ -102,7 +102,7 @@ class OfflineScalyEngine(assets: AssetManager) {
         }
 
         effective.sorted().forEach { index ->
-            val finding = jsonArray(presentation, "find").getJSONObject(index)
+            val finding = jsonArray(presentation, "find")[index]
             val modifiers = finding.optJSONObject("f") ?: JSONObject()
             val multiplierPosition = if (answers.getValue(index)) 0 else 1
             modifiers.keys().forEach { diagnosisId ->
@@ -143,5 +143,4 @@ class OfflineScalyEngine(assets: AssetManager) {
         val array: JSONArray = root.getJSONArray(key)
         return (0 until array.length()).map { array.getJSONObject(it) }
     }
-
 }
