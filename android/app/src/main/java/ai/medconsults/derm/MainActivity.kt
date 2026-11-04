@@ -291,11 +291,37 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
 
 @Composable
 private fun TestsScreen(p: PresentationData, selected: Int?, onSelect: (Int?) -> Unit) {
+    var targetMenu by remember(p.id) { mutableStateOf(false) }
+    val allTargets = "All targets"
+    val targets = remember(p.id) {
+        listOf(allTargets) + p.tests.map { it.target }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+    var selectedTarget by remember(p.id) { mutableStateOf(allTargets) }
+    val visibleTests = p.tests.filter { selectedTarget == allTargets || it.target == selectedTarget }
     Column(Modifier.fillMaxSize()) {
         Text("Investigations and confirmation", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(p.tests.size.toString() + " source tests · tap a test for interpretation")
+        Text(visibleTests.size.toString() + " of " + p.tests.size + " source tests · tap a test for interpretation")
+        ExposedDropdownMenuBox(expanded = targetMenu, onExpandedChange = { targetMenu = !targetMenu }) {
+            OutlinedTextField(
+                value = selectedTarget,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Filter by exact source target") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(targetMenu) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp)
+            )
+            ExposedDropdownMenu(expanded = targetMenu, onDismissRequest = { targetMenu = false }) {
+                targets.forEach { target ->
+                    DropdownMenuItem(
+                        text = { Text(target) },
+                        onClick = { selectedTarget = target; targetMenu = false }
+                    )
+                }
+            }
+        }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(p.tests, key = { it.index }) { t ->
+            items(visibleTests, key = { it.index }) { t ->
                 Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == t.index) null else t.index) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(t.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
