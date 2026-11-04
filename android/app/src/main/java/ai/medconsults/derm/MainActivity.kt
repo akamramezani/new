@@ -427,7 +427,7 @@ private fun ReferenceScreen(
                             FilterChip(selected = patientSex == option, onClick = { onPatientSexChange(option) }, label = { Text(option) })
                         }
                     }
-                    Text("Selections are for context review only; they do not alter the provisional differential or trigger automated triage.",
+                    Text("A mismatch is a prompt to verify the source population, not an exclusion rule. These details do not alter the provisional differential or trigger automated triage.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -457,10 +457,11 @@ private fun ReferenceScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(c.label, fontWeight = FontWeight.SemiBold)
                             c.ageRange?.let { Text("Source age range: " + it.first + "–" + it.second) }
-                            val parsedAge = patientAge.toIntOrNull()?.takeIf { it in 0..120 }
+                            val parsedAge = patientAge.toIntOrNull()
                             val ageStatus = when {
                                 c.ageRange == null -> null
-                                parsedAge == null -> "Age applicability: not assessed"
+                                patientAge.isBlank() -> "Age applicability: not assessed"
+                                parsedAge == null || parsedAge !in 0..120 -> "Age applicability: enter an age from 0 to 120"
                                 parsedAge in c.ageRange.first..c.ageRange.second -> "Age applicability: within source range"
                                 else -> "Age applicability: outside source range"
                             }
