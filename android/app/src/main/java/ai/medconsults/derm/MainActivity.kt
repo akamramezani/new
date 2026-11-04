@@ -436,6 +436,10 @@ private fun ReferenceScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(c.label, fontWeight = FontWeight.SemiBold)
                             c.ageRange?.let { Text("Source age range: " + it.first + "–" + it.second) }
+                            when (c.sex) {
+                                "f" -> Text("Source sex applicability: Female")
+                                "m" -> Text("Source sex applicability: Male")
+                            }
                             Text("Source diagnosis keys: " + c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
                             Text("Evidence " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
                             if (c.index in selectedContexts) {
