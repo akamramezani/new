@@ -229,8 +229,20 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                                 Text(dx.name, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                                 Text(fmt(dx.probability * 100) + "%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
+                            Text("After entered findings", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                             ProbabilityBar("", dx.probability)
-                            Text("Weight " + fmt(dx.weight) + " · Base " + fmt(dx.base), style = MaterialTheme.typography.labelSmall)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Baseline share", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                                Text(fmt(dx.baseProbability * 100) + "%", style = MaterialTheme.typography.labelSmall)
+                            }
+                            ProbabilityBar("", dx.baseProbability)
+                            Text("Change from baseline: " +
+                                (if (dx.probability - dx.baseProbability >= 0) "+" else "") +
+                                fmt((dx.probability - dx.baseProbability) * 100) + " percentage points" +
+                                " · Model weight " + fmt(dx.weight) + " (base " + fmt(dx.base) + ")",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (selected == dx.id) {
                                 Text("Why this diagnosis has this model weight", fontWeight = FontWeight.Bold)
                                 Text("Starting weight: " + fmt(dx.base), style = MaterialTheme.typography.bodySmall)
