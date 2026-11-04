@@ -427,6 +427,7 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                                answered: Int, error: String?, onCalculate: () -> Unit) {
     var compareTop by remember(result) { mutableStateOf(false) }
     var selectedForComparison by remember(p.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var showSelectedComparison by remember(p.id) { mutableStateOf(false) }
     var diagnosisSearch by remember(p.id) { mutableStateOf("") }
     var topFiveOnly by remember(p.id) { mutableStateOf(false) }
     val searchedRanked = result?.ranked?.filter { it.name.contains(diagnosisSearch, ignoreCase = true) }.orEmpty()
@@ -461,13 +462,17 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("${selectedForComparison.size}/3 selected to compare",
                     Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
-                TextButton(onClick = { selectedForComparison = emptySet() },
-                    enabled = selectedForComparison.isNotEmpty()) { Text("Clear") }
-                TextButton(onClick = { compareTop = false },
-                    enabled = selectedForComparison.size >= 2) { Text("Compare selected") }
+                TextButton(onClick = {
+                    selectedForComparison = emptySet()
+                    showSelectedComparison = false
+                }, enabled = selectedForComparison.isNotEmpty()) { Text("Clear") }
+                TextButton(onClick = {
+                    showSelectedComparison = true
+                    compareTop = false
+                }, enabled = selectedForComparison.size >= 2) { Text("Compare selected") }
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-                if (selectedForComparison.size >= 2) item(key = "selected-diagnosis-comparison") {
+                if (showSelectedComparison && selectedForComparison.size >= 2) item(key = "selected-diagnosis-comparison") {
                     val selectedProfiles = result.ranked
                         .filter { it.id in selectedForComparison }
                         .mapNotNull { ranked -> p.diagnoses.firstOrNull { it.id == ranked.id } }
