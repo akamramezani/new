@@ -193,7 +193,7 @@ private fun HomeScreen(
                     Metric("UNANSWERED", (p.findings.size - answered).coerceAtLeast(0).toString(), Modifier.weight(1f))
                 }
                 Text("Patient profile", fontWeight = FontWeight.SemiBold)
-                Text("Age: " + if (patientAge.isBlank()) "not specified" else "$patientAge years" +
+                Text("Age: " + (if (patientAge.isBlank()) "not specified" else "$patientAge years") +
                     " · Sex: $patientSex", style = MaterialTheme.typography.bodySmall)
                 Text("Context items selected for review: " + selectedContexts.size,
                     style = MaterialTheme.typography.bodySmall)
