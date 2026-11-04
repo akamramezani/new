@@ -285,6 +285,15 @@ private fun HomeScreen(
                     Metric("ABSENT", absentCount.toString(), Modifier.weight(1f))
                     Metric("UNANSWERED", (p.findings.size - answered).coerceAtLeast(0).toString(), Modifier.weight(1f))
                 }
+                Text("Answered findings", fontWeight = FontWeight.SemiBold)
+                if (answers.isEmpty()) {
+                    Text("No findings answered yet.", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    p.findings.filter { it.index in answers.keys }.sortedBy { it.index }.forEach { finding ->
+                        Text((if (answers[finding.index] == true) "Present · " else "Absent · ") + finding.label,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 Text("Patient profile", fontWeight = FontWeight.SemiBold)
                 Text("Age: " + (if (patientAge.isBlank()) "not specified" else "$patientAge years") +
                     " · Sex: $patientSex", style = MaterialTheme.typography.bodySmall)
