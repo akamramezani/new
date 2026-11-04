@@ -525,6 +525,7 @@ private fun ReferenceScreen(
     onContextToggle: (Int) -> Unit
 ) {
     var referenceSearch by remember(p.id) { mutableStateOf("") }
+    var referenceSection by remember(p.id) { mutableStateOf("All") }
     val visibleDiagnoses = p.diagnoses.filter { d ->
         referenceSearch.isBlank() || listOf(
             d.name, d.look, d.clinicalFeatures, d.dermoscopy, d.histopathology,
@@ -534,11 +535,13 @@ private fun ReferenceScreen(
             d.opposing.any { it.contains(referenceSearch, ignoreCase = true) } ||
             d.locations.any { it.contains(referenceSearch, ignoreCase = true) }
     }
-    val visibleContexts = p.contexts.filter { c ->
-        referenceSearch.isBlank() || c.label.contains(referenceSearch, ignoreCase = true) ||
-            c.source.contains(referenceSearch, ignoreCase = true) ||
-            c.grade.contains(referenceSearch, ignoreCase = true) ||
-            c.multipliers.keys.any { it.contains(referenceSearch, ignoreCase = true) }
+    val visibleContexts = p.contexts.filter { context ->
+        referenceSearch.isBlank() || context.label.contains(referenceSearch, ignoreCase = true) ||
+            context.source.contains(referenceSearch, ignoreCase = true) ||
+            context.grade.contains(referenceSearch, ignoreCase = true) ||
+            context.sex.orEmpty().contains(referenceSearch, ignoreCase = true) ||
+            context.ageRange?.let { (it.first.toString() + " " + it.second).contains(referenceSearch, ignoreCase = true) } == true ||
+            context.multipliers.keys.any { it.contains(referenceSearch, ignoreCase = true) }
     }
     val visibleStopRules = p.stopRules.filter { rule ->
         referenceSearch.isBlank() || rule.label.contains(referenceSearch, ignoreCase = true) ||
@@ -556,9 +559,23 @@ private fun ReferenceScreen(
             onValueChange = { referenceSearch = it },
             label = { Text("Search diagnoses, features, management, or context") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            trailingIcon = {
+                if (referenceSearch.isNotBlank()) {
+                    TextButton(onClick = { referenceSearch = "" }) { Text("Clear") }
+                }
+            }
         )
-        if (p.contexts.isNotEmpty()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf("All", "Diagnoses", "Context", "Safety").forEach { section ->
+                FilterChip(selected = referenceSection == section, onClick = { referenceSection = section },
+                    label = { Text(section) })
+            }
+        }
+        if (p.contexts.isNotEmpty() && referenceSection in listOf("All", "Context")) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Patient context review", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -582,7 +599,7 @@ private fun ReferenceScreen(
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            if (showSafetyFlag && p.safetyFlag.isNotBlank()) item {
+            if (referenceSection in listOf("All", "Safety") && showSafetyFlag && p.safetyFlag.isNotBlank()) item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Presentation safety flag", fontWeight = FontWeight.Bold)
@@ -592,10 +609,10 @@ private fun ReferenceScreen(
                     }
                 }
             }
-            if (visibleStopRules.isNotEmpty()) item {
+            if (referenceSection in listOf("All", "Safety") && visibleStopRules.isNotEmpty()) item {
                 Text("Escalation and stop rules", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
-            items(visibleStopRules) { rule ->
+            if (referenceSection in listOf("All", "Safety")) items(visibleStopRules) { rule ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(rule.label, fontWeight = FontWeight.SemiBold)
@@ -603,7 +620,7 @@ private fun ReferenceScreen(
                     }
                 }
             }
-            items(visibleDiagnoses, key = { it.id }) { d ->
+            if (referenceSection in listOf("All", "Diagnoses")) items(visibleDiagnoses, key = { it.id }) { d ->
                 Card(Modifier.fillMaxWidth().clickable { onDiagnosisSelect(if (selected == d.id) null else d.id) }) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(d.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -612,8 +629,8 @@ private fun ReferenceScreen(
                     }
                 }
             }
-            if (p.contexts.isNotEmpty()) item { Text("Patient context modifiers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-            items(visibleContexts, key = { "context-" + it.index }) { c ->
+            if (p.contexts.isNotEmpty() && referenceSection in listOf("All", "Context")) item { Text("Patient context modifiers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+            if (referenceSection in listOf("All", "Context")) items(visibleContexts, key = { "context-" + it.index }) { c ->
                 Card {
                     Row(
                         Modifier.fillMaxWidth().padding(12.dp),
