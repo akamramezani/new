@@ -4,6 +4,7 @@ import android.content.res.AssetManager
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.exp
+import kotlin.math.pow
 
 data class Finding(val index: Int, val label: String)
 data class RankedDiagnosis(
@@ -143,5 +144,4 @@ class OfflineScalyEngine(assets: AssetManager) {
         return (0 until array.length()).map { array.getJSONObject(it) }
     }
 
-    private fun Double.pow(power: Double): Double = kotlin.math.pow(this, power)
 }
