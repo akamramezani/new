@@ -11,6 +11,7 @@ import scoring  # noqa: E402
 
 PRESENTATION_PATH = ROOT / "android/app/src/main/assets/knowledge/presentation_scaly.json"
 OUTPUT_PATH = ROOT / "android/app/src/test/resources/scoring_golden_vectors.json"
+PRESENTATION_TEST_PATH = ROOT / "android/app/src/test/resources/presentation_scaly.json"
 SEED = 20261105
 
 
@@ -73,6 +74,7 @@ def main():
             },
         })
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PRESENTATION_TEST_PATH.write_text(PRESENTATION_PATH.read_text(encoding="utf-8"), encoding="utf-8")
     OUTPUT_PATH.write_text(json.dumps({
         "generator": "scoring.py::score_findings",
         "seed": SEED,
