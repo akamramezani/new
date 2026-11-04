@@ -1,5 +1,6 @@
 package ai.medconsults.derm
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ai.medconsults.derm.engine.*
@@ -38,6 +40,7 @@ private enum class Screen(val title: String, val glyph: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEngine) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val ids = remember { catalog.presentationIds }
     var selectedId by remember { mutableStateOf("scaly") }
     var menu by remember { mutableStateOf(false) }
@@ -97,6 +100,29 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
                         onDifferential = { screen = Screen.DIFFERENTIAL },
                         onTests = { screen = Screen.TESTS },
                         onReference = { screen = Screen.REFERENCE },
+                        onShare = {
+                            val report = buildAssessmentSummary(
+                                p, answers.toMap(), result, selectedContexts,
+                                patientAge, patientSex, selectedTest
+                            )
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Dermatology assessment summary")
+                                putExtra(Intent.EXTRA_TEXT, report)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share assessment summary"))
+                        },
+                        onReset = {
+                            answers.clear()
+                            result = null
+                            scoreError = null
+                            selectedDx = null
+                            selectedTest = null
+                            selectedContexts = emptySet()
+                            patientAge = ""
+                            patientSex = "Not specified"
+                            search = ""
+                        },
                         onCalculate = {
                             try { result = engine.score(answers.toMap(), selectedId); scoreError = null; screen = Screen.DIFFERENTIAL }
                             catch (e: Exception) { scoreError = e.message ?: "Scoring failed" }
@@ -124,6 +150,54 @@ private fun DermatologyApp(catalog: PresentationCatalog, engine: OfflineScalyEng
     }
 }
 
+
+private fun buildAssessmentSummary(
+    p: PresentationData,
+    answers: Map<Int, Boolean>,
+    result: ScalyResult?,
+    selectedContexts: Set<Int>,
+    patientAge: String,
+    patientSex: String,
+    selectedTest: Int?
+): String {
+    val findingsByIndex = p.findings.associateBy { it.index }
+    val selectedTestName = p.tests.firstOrNull { it.index == selectedTest }?.label
+    return buildString {
+        appendLine("MedConsults — Dermatology assessment summary")
+        appendLine("Presentation: ${p.label}")
+        appendLine("Generated from an offline development prototype")
+        appendLine()
+        appendLine("Patient profile")
+        appendLine("Age: ${if (patientAge.isBlank()) "Not specified" else "$patientAge years"}")
+        appendLine("Sex: $patientSex")
+        appendLine()
+        appendLine("Findings (${answers.size} of ${p.findings.size} answered)")
+        answers.toSortedMap().forEach { (index, present) ->
+            val label = findingsByIndex[index]?.label ?: "Finding ${index + 1}"
+            appendLine("${if (present) "[Present]" else "[Absent]"} $label")
+        }
+        if (answers.isEmpty()) appendLine("No findings recorded.")
+        appendLine()
+        appendLine("Investigation selected: ${selectedTestName ?: "None"}")
+        appendLine("Context items selected for review: ${selectedContexts.size}")
+        if (result != null) {
+            appendLine()
+            appendLine("Provisional model ranking (not validated clinical probabilities)")
+            result.ranked.take(5).forEachIndexed { index, diagnosis ->
+                appendLine("${index + 1}. ${diagnosis.name}: ${fmt(diagnosis.probability * 100)}% displayed model share")
+            }
+            appendLine("Answered: ${result.answeredCount}; scored after correlation handling: ${result.scoredCount}")
+            appendLine("Residual model share: ${fmt(result.residual * 100)}%")
+        } else {
+            appendLine()
+            appendLine("No provisional ranking has been calculated.")
+        }
+        appendLine()
+        appendLine("Safety flag: ${p.safetyFlag}")
+        appendLine("Clinical safety: This prototype is not validated for clinical decisions. Verify findings, source applicability, investigations, and escalation needs independently. The displayed model shares are not validated clinical probabilities.")
+    }
+}
+
 @Composable
 private fun HomeScreen(
     p: PresentationData,
@@ -138,8 +212,11 @@ private fun HomeScreen(
     onDifferential: () -> Unit,
     onTests: () -> Unit,
     onReference: () -> Unit,
+    onShare: () -> Unit,
+    onReset: () -> Unit,
     onCalculate: () -> Unit
 ) {
+    var showResetConfirmation by remember(p.id) { mutableStateOf(false) }
     val answered = answers.size
     val presentCount = answers.values.count { it }
     val absentCount = answered - presentCount
@@ -204,11 +281,37 @@ private fun HomeScreen(
                     TextButton(onClick = onTests) { Text("Review tests") }
                     TextButton(onClick = onReference) { Text("Review context") }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onShare, enabled = answered > 0 || result != null) {
+                        Text("Share summary")
+                    }
+                    TextButton(
+                        onClick = { showResetConfirmation = true },
+                        enabled = answered > 0 || result != null || selectedContexts.isNotEmpty() ||
+                            patientAge.isNotBlank() || patientSex != "Not specified" || selectedTest != null
+                    ) { Text("Reset assessment", color = MaterialTheme.colorScheme.error) }
+                }
             }
         }
         if (result != null) {
             Text("Latest provisional leaders", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             result.ranked.take(3).forEachIndexed { i, dx -> ProbabilityBar((i + 1).toString() + ". " + dx.name, dx.probability) }
+        }
+        if (showResetConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showResetConfirmation = false },
+                title = { Text("Reset this assessment?") },
+                text = { Text("This clears entered findings, patient context, selected investigation, and the provisional result for this presentation. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onReset()
+                        showResetConfirmation = false
+                    }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetConfirmation = false }) { Text("Cancel") }
+                }
+            )
         }
         Text("How the workflow works", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Workflow("01", "Characterise", "Record positive and negative morphological findings.")
