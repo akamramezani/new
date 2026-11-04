@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -204,6 +205,7 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
 @Composable
 private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, selected: String?, onSelect: (String?) -> Unit,
                                answered: Int, error: String?, onCalculate: () -> Unit) {
+    var compareTop by remember(result) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Text("Differential diagnosis", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text("Ranked shortlist and visual comparison", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -217,11 +219,17 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                 Metric("COUNTED", result.scoredCount.toString(), Modifier.weight(1f))
                 Metric("RESIDUAL", fmt(result.residual * 100) + "%", Modifier.weight(1f))
             }
-            Text("Relative ranking chart", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Relative ranking chart", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                TextButton(onClick = { compareTop = !compareTop }) { Text(if (compareTop) "Hide comparison" else "Compare top 3") }
+            }
             if (p.id != "scaly") Text("Generic reference scoring · fixed 0.11 residual · no presentation-specific correlation handling. Not clinically validated.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text("Bars show the reconstructed model's normalised weights, not validated clinical probabilities.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+                if (compareTop) item(key = "diagnosis-comparison") {
+                    DiagnosisComparison(result.ranked.take(3).mapNotNull { ranked -> p.diagnoses.firstOrNull { it.id == ranked.id } })
+                }
                 items(result.ranked, key = { it.id }) { dx ->
                     Card(Modifier.fillMaxWidth().clickable { onSelect(if (selected == dx.id) null else dx.id) }) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -367,6 +375,35 @@ private fun ReferenceScreen(p: PresentationData, selected: String?, onSelect: (S
                         Text(c.multipliers.entries.joinToString(" · ") { it.key + ": ×" + fmt(it.value) })
                         Text("Grade " + c.grade + " · " + c.source, style = MaterialTheme.typography.labelSmall)
                         Text("Reference only; these modifiers are not applied to the ranking.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiagnosisComparison(diagnoses: List<PresentationDiagnosis>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Leading diagnosis comparison", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Source profile content only. These are distinguishing features to review, not an automated diagnostic conclusion.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            diagnoses.forEachIndexed { index, d ->
+                Card(Modifier.width(290.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("${index + 1}. ${d.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Detail("Typical appearance", d.look)
+                        Detail("Features supporting", d.supporting.joinToString("\n• ", "• "))
+                        Detail("Features arguing against", d.opposing.joinToString("\n• ", "• "))
+                        Detail("Clinical confirmation", d.clinicalFeatures)
+                        Detail("Dermoscopy", d.dermoscopy)
+                        Detail("Histopathology", d.histopathology)
+                        Detail("Typical sites", d.locations.joinToString(", "))
+                        Detail("Distribution", d.pattern)
+                        Detail("Associations", d.associations)
+                        Text("Evidence ${d.grade} · ${d.source}", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
