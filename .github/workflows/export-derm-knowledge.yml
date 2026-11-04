@@ -1,0 +1,29 @@
+name: Export offline dermatology knowledge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Export production knowledge assets
+        run: python3 tools/export_derm_knowledge.py
+
+      - name: Commit exported assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/app/src/main/assets/knowledge/
+          if git diff --cached --quiet; then
+            echo "Knowledge assets are already up to date."
+          else
+            git commit -m "Export offline dermatology knowledge assets"
+            git push
+          fi
