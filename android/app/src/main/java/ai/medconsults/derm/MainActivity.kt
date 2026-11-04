@@ -259,11 +259,7 @@ private fun FindingsScreen(p: PresentationData, answers: MutableMap<Int, Boolean
                             FilterChip(selected = answers[f.index] == false, onClick = { answers[f.index] = false; onChange() }, label = { Text("Absent") })
                             if (f.index in answers) TextButton(onClick = { answers.remove(f.index); onChange() }) { Text("Clear") }
                         }
-                        Row {
-                            Text("Group: " + f.group, style = MaterialTheme.typography.labelSmall)
-                            Spacer(Modifier.weight(1f))
-                            Text("Grade " + f.grade, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        }
+                        Text("Group: " + f.group, style = MaterialTheme.typography.labelSmall)
                         Text("Evidence " + f.grade + " · " + f.source,
                             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (f.likelihoods.isNotEmpty()) {
