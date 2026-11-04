@@ -5,14 +5,28 @@ Native Kotlin + Jetpack Compose foundation. No WebView and no internet permissio
 ## Open
 Open this `android` folder in Android Studio, allow Gradle sync, then build the app.
 
-## Current stage
-Stage 1 creates the native Android shell and the 12-presentation entry screen. It is not yet a clinical engine and must not be used for patient care.
+## Implemented in this commit
+- Native Android application shell.
+- Local JSON loading from APK assets.
+- Scaly presentation knowledge package bundled at `app/src/main/assets/knowledge/presentation_scaly.json`.
+- Finding checklist for the 40 scaly findings.
+- Offline scaly differential ranking using the reconstructed scoring reference in the repository:
+  - base diagnosis weights
+  - yes/no likelihood multipliers raised to exponent 0.7
+  - seven documented correlated-finding selection groups
+  - residual estimate currently validated for scaly only: `0.05 + 0.06 * exp(-n / 3)`
+- Safety reminders from the scaly presentation are displayed.
 
-## Next stages
-1. Install and validate the exact offline knowledge export.
-2. Export the frozen final model as deployable inference parameters.
-3. Implement and test the original clinical rules, red flags, ranking, and question selection.
-4. Connect the model only to its validated task.
-5. Test offline behavior and build signed APK/AAB.
+## Not yet implemented
+- Remaining 11 presentation JSON packages.
+- Full red-flag gating logic (the displayed safety reminders are not an automated triage gate).
+- Context modifiers and their application to ranking.
+- Adaptive next-question selection.
+- Confirmatory test selection and post-test probability updating.
+- Deployment-ready RBF model inference. The repository's nested-CV JSONs contain validation predictions/metrics and fold results; they are not, by themselves, a serialized fitted model for new cases.
+- Automated parity tests against the production API and Android build verification.
+
+## Safety
+This is a development prototype, not a validated medical device. The scaly ranking component must pass deterministic parity tests against the reference implementation and production API before clinical use. Other presentations must remain unavailable until their data and scoring rules are independently validated.
 
 See `app/src/main/assets/ASSET_INSTALLATION.md`.
