@@ -140,6 +140,9 @@ def load_inputs():
 
     records = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     reference = json.loads(REFERENCE_FILE.read_text(encoding="utf-8"))
+    actual_dataset_sha = sha256_file(DATA_FILE)
+    require(actual_dataset_sha == reference.get("dataset_sha256"),
+            "Expanded dataset SHA-256 does not match the reference metadata.")
     require(isinstance(records, list) and len(records) > 0,
             "Expanded dataset must be a non-empty JSON list.")
     return presentation, records, reference
@@ -352,6 +355,10 @@ def main():
                 f"Fold {fold_number}: train background count mismatch.")
         require(int(fold_reference["test_backgrounds"]) == len(test_groups),
                 f"Fold {fold_number}: test background count mismatch.")
+        require(set(fold_reference["train_background_ids"]) == train_groups,
+                f"Fold {fold_number}: training background IDs differ.")
+        require(set(fold_reference["test_background_ids"]) == test_groups,
+                f"Fold {fold_number}: test background IDs differ.")
 
         require(float(fold_reference["alpha"]) == float(alpha),
                 f"Fold {fold_number}: selected alpha differs "
