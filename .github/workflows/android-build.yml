@@ -1,4 +1,4 @@
-name: Android debug build
+name: Android build validation
 
 on:
   push:
@@ -46,8 +46,13 @@ jobs:
       - name: Build debug APK
         run: gradle -p android assembleDebug
 
-      - name: Upload debug APK
+      - name: Build release APK
+        run: gradle -p android assembleRelease
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: medconsults-derm-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: medconsults-derm-apks
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
