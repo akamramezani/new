@@ -161,6 +161,28 @@ class OfflineScalyEngine(assets: AssetManager) {
             )
         }.sortedByDescending { it.probability }
 
+        // Mathematical integrity checks for the displayed model shares.
+        // These validate arithmetic consistency only; they do not establish clinical validity.
+        val expectedMass = 1.0 - residual
+        val displayedMass = ranked.sumOf { it.probability }
+        val baselineMass = ranked.sumOf { it.baseProbability }
+        require(displayedMass.isFinite() && kotlin.math.abs(displayedMass - expectedMass) < 1e-9) {
+            "Adjusted diagnosis shares do not sum to the expected model mass."
+        }
+        require(baselineMass.isFinite() && kotlin.math.abs(baselineMass - expectedMass) < 1e-9) {
+            "Baseline diagnosis shares do not sum to the expected model mass."
+        }
+        ranked.forEach { diagnosis ->
+            require(diagnosis.weight.isFinite() && diagnosis.weight > 0.0) {
+                "Invalid final model weight for ${diagnosis.id}."
+            }
+            val reconstructed = diagnosis.contributions.lastOrNull()?.weightAfter ?: diagnosis.base
+            require(kotlin.math.abs(reconstructed - diagnosis.weight) <=
+                1e-9 * maxOf(1.0, kotlin.math.abs(diagnosis.weight))) {
+                "Contribution trace does not reconstruct the final weight for ${diagnosis.id}."
+            }
+        }
+
         return ScalyResult(
             answeredCount = answers.size,
             scoredCount = effective.size,
