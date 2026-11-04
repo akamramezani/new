@@ -1,0 +1,124 @@
+{
+  "source": "https://api.medconsults.ai",
+  "exported_at_utc": "2026-11-04T16:29:59.895006+00:00",
+  "presentations": {
+    "scaly": {
+      "file": "presentation_scaly.json",
+      "sha256": "ad124ee4a195d16b2d1e84b3c52ac2b51b3e2b92973858fbd328ff3dfff160f9",
+      "diagnoses": 18,
+      "findings": 40,
+      "tests": 14,
+      "context_modifiers": 11,
+      "urgent_rules": 6
+    },
+    "acute": {
+      "file": "presentation_acute.json",
+      "sha256": "c7e1204845d6df5bf54f0953c3e6b04a6fbf4a3af71ab7f58fd9a7190f87bacc",
+      "diagnoses": 16,
+      "findings": 33,
+      "tests": 12,
+      "context_modifiers": 11,
+      "urgent_rules": 8
+    },
+    "bulla": {
+      "file": "presentation_bulla.json",
+      "sha256": "e653189a37767ad0f4d9a7ae89df3c668371914b3df9f1453f5016531544a150",
+      "diagnoses": 18,
+      "findings": 37,
+      "tests": 14,
+      "context_modifiers": 10,
+      "urgent_rules": 8
+    },
+    "wheal": {
+      "file": "presentation_wheal.json",
+      "sha256": "3b1c1e1cc1936d1c3c35697228222f10969ba026df105a7e525aa82739499760",
+      "diagnoses": 14,
+      "findings": 28,
+      "tests": 12,
+      "context_modifiers": 9,
+      "urgent_rules": 7
+    },
+    "purp": {
+      "file": "presentation_purp.json",
+      "sha256": "c1ff0e84895007a50dc461ce08c8b3e3816b52edc2f49922c7374f7a7f1856f4",
+      "diagnoses": 17,
+      "findings": 32,
+      "tests": 14,
+      "context_modifiers": 11,
+      "urgent_rules": 9
+    },
+    "ecz": {
+      "file": "presentation_ecz.json",
+      "sha256": "88b7176acfe38e591455fe3650430af607bdedb99d25900b2df9ea4ce178d988",
+      "diagnoses": 18,
+      "findings": 34,
+      "tests": 12,
+      "context_modifiers": 11,
+      "urgent_rules": 6
+    },
+    "ann": {
+      "file": "presentation_ann.json",
+      "sha256": "0715ff0972de4026488880120a4ee7e9f62a8b869666b1eb4105822907eddc5d",
+      "diagnoses": 16,
+      "findings": 29,
+      "tests": 12,
+      "context_modifiers": 10,
+      "urgent_rules": 5
+    },
+    "pig": {
+      "file": "presentation_pig.json",
+      "sha256": "b1409fc65629c97e01ed1ae5a840b18bb6d6029a02b52ea17307446a31d15364",
+      "diagnoses": 16,
+      "findings": 34,
+      "tests": 11,
+      "context_modifiers": 10,
+      "urgent_rules": 6
+    },
+    "face": {
+      "file": "presentation_face.json",
+      "sha256": "98916a0dee876a16018a090bd6024799cc690637e741c42a81cda4e6bf079a22",
+      "diagnoses": 15,
+      "findings": 30,
+      "tests": 11,
+      "context_modifiers": 11,
+      "urgent_rules": 6
+    },
+    "hair": {
+      "file": "presentation_hair.json",
+      "sha256": "a3296adbeffb2d3044570146dee076992e584945ad7411bbbaafcf32c8fa38a3",
+      "diagnoses": 17,
+      "findings": 28,
+      "tests": 9,
+      "context_modifiers": 11,
+      "urgent_rules": 6
+    },
+    "nod": {
+      "file": "presentation_nod.json",
+      "sha256": "36ed1b77e34fa6f00f3783a18d21b194ba4efefd881ea37b23a7685f60ed9156",
+      "diagnoses": 16,
+      "findings": 28,
+      "tests": 11,
+      "context_modifiers": 11,
+      "urgent_rules": 7
+    },
+    "hypo": {
+      "file": "presentation_hypo.json",
+      "sha256": "efc15213fe77531e563530f5619a5809c641e4682f7dafc231fddb43843c07ac",
+      "diagnoses": 16,
+      "findings": 29,
+      "tests": 11,
+      "context_modifiers": 9,
+      "urgent_rules": 7
+    }
+  },
+  "bootstrap_sha256": "7f44d85923ea514ce42917cb17ddbad4d75e700af539253badbe02c236fd2bec",
+  "bootstrap_keys": [
+    "built",
+    "corrNote",
+    "grades",
+    "pres",
+    "reviewCycle",
+    "reviewed",
+    "v"
+  ]
+}
