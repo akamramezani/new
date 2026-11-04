@@ -491,7 +491,10 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
             Text("Bars show the reconstructed model's normalised weights, not validated clinical probabilities.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(value = diagnosisSearch, onValueChange = { diagnosisSearch = it },
-                label = { Text("Search diagnoses") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                label = { Text("Search diagnoses") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+                trailingIcon = {
+                    if (diagnosisSearch.isNotBlank()) TextButton(onClick = { diagnosisSearch = "" }) { Text("Clear") }
+                })
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = topFiveOnly, onClick = { topFiveOnly = !topFiveOnly }, label = { Text("Top five only") })
                 Text("${visibleRanked.size} of ${result.ranked.size} diagnoses shown",
@@ -510,6 +513,9 @@ private fun DifferentialScreen(p: PresentationData, result: ScalyResult?, select
                 }, enabled = selectedForComparison.size >= 2) { Text("Compare selected") }
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+                if (visibleRanked.isEmpty()) item(key = "no-diagnoses-match") {
+                    EmptyCard("No diagnoses match", "Try a different search term or turn off the Top five only filter.")
+                }
                 if (showSelectedComparison && selectedForComparison.size >= 2) item(key = "selected-diagnosis-comparison") {
                     val selectedProfiles = result.ranked
                         .filter { it.id in selectedForComparison }
@@ -659,7 +665,10 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
             onValueChange = { testSearch = it },
             label = { Text("Search tests and interpretation") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            trailingIcon = {
+                if (testSearch.isNotBlank()) TextButton(onClick = { testSearch = "" }) { Text("Clear") }
+            }
         )
         ExposedDropdownMenuBox(expanded = targetMenu, onExpandedChange = { targetMenu = !targetMenu }) {
             OutlinedTextField(
@@ -681,6 +690,9 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
             }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            if (visibleTests.isEmpty()) item(key = "no-tests-match") {
+                EmptyCard("No investigations match", "Try another search term or choose a different target filter.")
+            }
             items(visibleTests, key = { it.index }) { t ->
                 Card(Modifier.fillMaxWidth().clickable {
                     expandedTest = if (expandedTest == t.index) null else t.index
