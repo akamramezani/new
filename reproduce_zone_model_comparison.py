@@ -297,7 +297,7 @@ def main():
     zone_mae_differences = {}
     for j, zone in enumerate(ZONES):
         scores = {
-            name: float(np.mean(np.abs(y[:, j] - preds[name][:, j]))
+            name: float(np.mean(np.abs(y[:, j] - preds[name][:, j])))
         for name in MODELS
         }
         saved_row = ref["zone_comparison_table"][j]
