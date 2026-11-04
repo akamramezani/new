@@ -5,7 +5,6 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.pow
 
@@ -18,8 +17,12 @@ class OfflineScalyEngineTest {
             .put(JSONObject().put("id", "A").put("n", "Diagnosis A").put("base", 2.0))
             .put(JSONObject().put("id", "B").put("n", "Diagnosis B").put("base", 1.0))
         val findings = JSONArray()
-            .put(finding("unused 0"))
-            .put(finding("unused 1"))
+            .put(finding("correlated retained", JSONObject()
+                .put("A", JSONArray().put(3.0).put(0.2))
+                .put("B", JSONArray().put(0.5).put(4.0))))
+            .put(finding("correlated dropped", JSONObject()
+                .put("A", JSONArray().put(0.1).put(0.01))
+                .put("B", JSONArray().put(0.1).put(1000.0))))
             .put(finding("positive evidence", JSONObject()
                 .put("A", JSONArray().put(4.0).put(0.25))
                 .put("B", JSONArray().put(0.5).put(2.0))))
