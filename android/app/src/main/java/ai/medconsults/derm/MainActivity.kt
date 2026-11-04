@@ -602,10 +602,20 @@ private fun TestsScreen(p: PresentationData, selected: Set<Int>, leadingDiagnosi
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         if (selected.isNotEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Investigation shortlist", fontWeight = FontWeight.Bold)
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Investigation shortlist", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { selected.forEach { onSelect(it) } }) { Text("Clear all") }
+                    }
                     p.tests.filter { it.index in selected }.forEach { test ->
-                        Text("• ${test.label} — ${test.target}", style = MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(test.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Target: ${test.target}", style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            TextButton(onClick = { onSelect(test.index) }) { Text("Remove") }
+                        }
                     }
                     Text("Selections are a review checklist only; they do not constitute an investigation order or recommendation.",
                         style = MaterialTheme.typography.labelSmall)
