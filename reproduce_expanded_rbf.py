@@ -141,8 +141,11 @@ def load_inputs():
     records = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     reference = json.loads(REFERENCE_FILE.read_text(encoding="utf-8"))
     actual_dataset_sha = sha256_file(DATA_FILE)
+    actual_presentation_sha = sha256_file(PRESENTATION_FILE)
     require(actual_dataset_sha == reference.get("dataset_sha256"),
             "Expanded dataset SHA-256 does not match the reference metadata.")
+    require(actual_presentation_sha == reference.get("presentation_sha256"),
+            "Presentation SHA-256 does not match the reference metadata.")
     require(isinstance(records, list) and len(records) > 0,
             "Expanded dataset must be a non-empty JSON list.")
     return presentation, records, reference
@@ -488,6 +491,7 @@ def main():
         "dataset_file": DATA_FILE.name,
         "reference_file": REFERENCE_FILE.name,
         "dataset_sha256": sha256_file(DATA_FILE),
+        "presentation_sha256": sha256_file(PRESENTATION_FILE),
         "reference_sha256": sha256_file(REFERENCE_FILE),
         "records": int(n_records),
         "unique_backgrounds": int(len(np.unique(groups))),
